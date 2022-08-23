@@ -56,26 +56,8 @@ func TestLifecycle(t *testing.T) {
                     "value2"
                 ]
             }
-        },
-        "examples": [{
-            "key": "name1",
-            "value": "value1"
-        },
-        {
-            "key": "name2",
-            "value": "value2"
-        }]
-    },
-    "examples": [
-        [{
-            "key": "name1",
-            "value": "value1"
-        },
-        {
-            "key": "name2",
-            "value": "value2"
-        }]
-    ]
+        }
+    }
 }`)
 	if err != nil {
 		t.Fatalf(err.Error())
