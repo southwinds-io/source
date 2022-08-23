@@ -12,6 +12,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/qri-io/jsonschema"
 	_ "modernc.org/sqlite"
@@ -23,6 +24,11 @@ import (
 
 const (
 	sqlDriver = "sqlite"
+)
+
+var (
+	ErrNotFound        = errors.New("noy found")
+	ErrInvalidItemType = errors.New("invalid item type")
 )
 
 // DataBase the definition of the configuration database
@@ -38,10 +44,16 @@ type I struct {
 	Updated time.Time
 }
 
-// T the definition of an item  tag
+// T the definition of an item tag
 type T struct {
 	Name  string
 	Value string
+}
+
+// TT the definition of an item type
+type TT struct {
+	Key    string
+	Schema string
 }
 
 // New create a new configuration database on the specified path
@@ -169,6 +181,9 @@ func (d *DataBase) GetItem(key string) (*I, error) {
 	)
 	err := row.Scan(&itype, &value, &updated)
 	if err != nil {
+		if strings.Contains(err.Error(), "no rows") {
+			return nil, ErrNotFound
+		}
 		return nil, err
 	}
 	return &I{
@@ -305,10 +320,10 @@ func (d *DataBase) GetParents(childKey string) ([]I, error) {
 	return items, nil
 }
 
-func (d *DataBase) getSchema(key string) (string, error) {
-	row, err := d.db.Query(`SELECT schema FROM type WHERE key = ?;`, key)
+func (d *DataBase) GetItems() ([]I, error) {
+	row, err := d.db.Query(`SELECT key, type, value, updated FROM item;`)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	defer func(row *sql.Rows) {
 		err = row.Close()
@@ -316,12 +331,67 @@ func (d *DataBase) getSchema(key string) (string, error) {
 			fmt.Printf("cannot close query row: %s\n", err)
 		}
 	}(row)
-	var result string
+	var (
+		key, iType, value string
+		updated           sql.NullInt64
+		items             []I
+	)
 	for row.Next() {
-		err = row.Scan(&result)
+		err = row.Scan(&key, &iType, &value, &updated)
 		if err != nil {
-			return "", err
+			if strings.Contains(err.Error(), "no rows") {
+				return nil, ErrNotFound
+			}
+			return nil, err
 		}
+		items = append(items, I{
+			Key:     key,
+			Type:    iType,
+			Value:   value,
+			Updated: time.Unix(0, updated.Int64).UTC(),
+		})
+	}
+	return items, nil
+}
+
+func (d *DataBase) GetTypes() ([]TT, error) {
+	row, err := d.db.Query(`SELECT key, schema FROM type;`)
+	if err != nil {
+		return nil, err
+	}
+	defer func(row *sql.Rows) {
+		err = row.Close()
+		if err != nil {
+			fmt.Printf("cannot close query row: %s\n", err)
+		}
+	}(row)
+	var key, schema string
+	var types []TT
+	for row.Next() {
+		err = row.Scan(&key, &schema)
+		if err != nil {
+			if strings.Contains(err.Error(), "no rows") {
+				return nil, ErrNotFound
+			}
+			return nil, err
+		}
+		types = append(types, TT{
+			Key:    key,
+			Schema: schema,
+		})
+	}
+	return types, nil
+}
+
+func (d *DataBase) GetSchema(key string) (string, error) {
+	row := d.db.QueryRow(`SELECT schema FROM type WHERE key = ?;`, key)
+	var result string
+	err := row.Scan(&result)
+	if err != nil {
+		if strings.Contains(err.Error(), "no rows") {
+			return "", ErrNotFound
+		}
+		return "", err
 	}
 	return result, nil
 }
@@ -330,7 +400,7 @@ func (d *DataBase) setItemString(key, iType, value string, validate bool) error 
 	// if a type is provided
 	if validate {
 		// get the schema for the type
-		s, err := d.getSchema(iType)
+		s, err := d.GetSchema(iType)
 		if err != nil {
 			return err
 		}
@@ -350,6 +420,8 @@ func (d *DataBase) setItemString(key, iType, value string, validate bool) error 
 			if len(errs) > 0 {
 				return errs[0]
 			}
+		} else if len(iType) > 0 {
+			return ErrInvalidItemType
 		}
 	}
 	stmt := `INSERT INTO item(key, type, value, updated) VALUES(?, ?, ?, ?) ON CONFLICT(key) DO UPDATE SET type = excluded.type, value = excluded.value, updated = excluded.updated;`

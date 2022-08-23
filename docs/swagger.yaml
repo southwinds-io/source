@@ -1,0 +1,244 @@
+info:
+  contact:
+    email: info@southwinds.io
+    name: SouthWinds Tech Ltd
+    url: https://southwinds.io/
+  description: Ultra lightweight configuration data service
+  title: Onix Source
+  version: "1.0"
+paths:
+  /item:
+    get:
+      description: Get all the configurations
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Get all the configurations
+      tags:
+      - Items
+  /item/{key}:
+    delete:
+      description: Delete a configuration item
+      parameters:
+      - description: the key for the configuration item to delete
+        in: path
+        name: key
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Delete a configuration item
+      tags:
+      - Items
+    get:
+      description: Get value of a configuration item
+      parameters:
+      - description: the key for the configuration item to get
+        in: path
+        name: key
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "404":
+          description: Not Found
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Get the value of a configuration item
+      tags:
+      - Items
+    put:
+      description: Set value of a configuration item
+      parameters:
+      - description: the key for the configuration item to set
+        in: path
+        name: key
+        required: true
+        type: string
+      - description: the json based configuration
+        in: body
+        name: schema
+        required: true
+        schema:
+          type: string
+      - description: the key that defines the type of item for validation purposes.
+          If not specified, no validation is performed.
+        in: header
+        name: Source-Type
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Set the value of a configuration item
+      tags:
+      - Items
+  /ready:
+    get:
+      description: Check any relevant backends are online and healthy.
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Check service readiness
+      tags:
+      - General
+  /type:
+    get:
+      description: Get all the item types
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Get all the item types
+      tags:
+      - Types
+  /type/{key}:
+    delete:
+      description: Delete a configuration type
+      parameters:
+      - description: the key for the configuration type to delete
+        in: path
+        name: key
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Delete a configuration type
+      tags:
+      - Types
+    get:
+      description: Get the json schema for a configuration item
+      parameters:
+      - description: the key for the type of configuration item json schema
+        in: path
+        name: key
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "404":
+          description: Not Found
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Get the json schema for a configuration item
+      tags:
+      - Types
+    put:
+      description: Set the json schema to validate an item of the specific type
+      parameters:
+      - description: the key for the type to set
+        in: path
+        name: key
+        required: true
+        type: string
+      - description: the json schema to apply to the item type
+        in: body
+        name: schema
+        required: true
+        schema:
+          type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Set the validation for an item type
+      tags:
+      - Types
+swagger: "2.0"
