@@ -31,7 +31,7 @@ import (
 // ReadyHandler
 // @Summary Check service readiness
 // @Description Check any relevant backends are online and healthy.
-// @Tags General
+// @Tags Health
 // @Router /ready [get]
 // @Accepts json
 // @Produce json
@@ -39,7 +39,7 @@ import (
 // @Success 200 {string} the service is ready
 func ReadyHandler(w http.ResponseWriter, r *http.Request) {
 	_, err := db.GetItem(uuid.NewString())
-	if err != nil && !strings.Contains(err.Error(), "sql: no rows") {
+	if err != nil && err != cdb.ErrNotFound {
 		log.Printf("service not ready: %s\n", err)
 		httpserver.Err(w, http.StatusInternalServerError, fmt.Sprintf("service not ready: %s\n", err))
 		return
@@ -50,7 +50,7 @@ func ReadyHandler(w http.ResponseWriter, r *http.Request) {
 // SetTypeHandler
 // @Summary Set the validation for an item type
 // @Description Set the json schema to validate an item of the specific type
-// @Tags Types
+// @Tags Validation
 // @Router /type/{key} [put]
 // @Param key path string true "the key for the type to set"
 // @Param schema body string true "the json schema to apply to the item type"
@@ -68,7 +68,7 @@ func SetTypeHandler(w http.ResponseWriter, r *http.Request) {
 		httpserver.Err(w, http.StatusBadRequest, fmt.Sprintf("cannot read request body: %s\n", err))
 		return
 	}
-	err = db.SetType(key, string(body[:]))
+	err = db.SetTypeFromString(key, string(body[:]))
 	if err != nil {
 		log.Printf("cannot set type: %s\n", err)
 		httpserver.Err(w, http.StatusInternalServerError, fmt.Sprintf("cannot set type: %s\n", err))
@@ -80,7 +80,7 @@ func SetTypeHandler(w http.ResponseWriter, r *http.Request) {
 // GetTypeHandler
 // @Summary Get the json schema for a configuration item
 // @Description Get the json schema for a configuration item
-// @Tags Types
+// @Tags Validation
 // @Router /type/{key} [get]
 // @Param key path string true "the key for the type of configuration item json schema"
 // @Produce json
@@ -107,7 +107,7 @@ func GetTypeHandler(w http.ResponseWriter, r *http.Request) {
 // GetTypesHandler
 // @Summary Get all the item types
 // @Description Get all the item types
-// @Tags Types
+// @Tags Validation
 // @Router /type [get]
 // @Produce json
 // @Failure 500 {string} there was an unexpected error processing the request
@@ -125,7 +125,7 @@ func GetTypesHandler(w http.ResponseWriter, r *http.Request) {
 // DeleteTypeHandler
 // @Summary Delete a configuration type
 // @Description Delete a configuration type
-// @Tags Types
+// @Tags Validation
 // @Router /type/{key} [delete]
 // @Param key path string true "the key for the configuration type to delete"
 // @Produce json
@@ -167,9 +167,9 @@ func SetItemHandler(w http.ResponseWriter, r *http.Request) {
 		httpserver.Err(w, http.StatusBadRequest, fmt.Sprintf("cannot read request body: %s\n", err))
 		return
 	}
-	err = db.SetItem(key, itemType, string(body[:]), len(itemType) > 0)
+	err, isValidationError := db.SetItem(key, itemType, string(body[:]), len(itemType) > 0)
 	if err != nil {
-		if err == cdb.ErrInvalidItemType {
+		if err == cdb.ErrInvalidItemType || isValidationError {
 			log.Printf("cannot set item: %s\n", err)
 			httpserver.Err(w, http.StatusBadRequest, fmt.Sprintf("cannot set item: %s\n", err))
 			return
@@ -227,6 +227,28 @@ func GetItemsHandler(w http.ResponseWriter, r *http.Request) {
 	httpserver.Write(w, r, items)
 }
 
+// GetTaggedItemsHandler
+// @Summary Get all the configurations that have the specified tags
+// @Description Get all the configurations that have the specified tags
+// @Tags Items
+// @Router /item/tag/{tags} [get]
+// @Param tags path string true "a pipe separated list of tags (e.g. tag1|tag2|tag3) where tag is the tag name, not the value"
+// @Produce json
+// @Failure 500 {string} there was an unexpected error processing the request
+// @Success 200 {string} the request was successful
+func GetTaggedItemsHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	tags := vars["tags"]
+	tagList := strings.Split(tags, "|")
+	items, err := db.GetTaggedItems(tagList...)
+	if err != nil {
+		log.Printf("cannot get tagged items: %s\n", err)
+		httpserver.Err(w, http.StatusInternalServerError, fmt.Sprintf("cannot get tagged items: %s\n", err))
+		return
+	}
+	httpserver.Write(w, r, items)
+}
+
 // DeleteItemHandler
 // @Summary Delete a configuration item
 // @Description Delete a configuration item
@@ -247,4 +269,260 @@ func DeleteItemHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusOK)
+}
+
+// GetChildrenHandler
+// @Summary Get the children linked to a configuration
+// @Description Get the children linked to a configuration
+// @Tags Items
+// @Router /item/{key}/children [get]
+// @Param key path string true "the key for the item having the children"
+// @Produce json
+// @Failure 500 {string} there was an unexpected error processing the request
+// @Success 200 {string} the request was successful
+func GetChildrenHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	key := vars["key"]
+	children, err := db.GetChildren(key)
+	if err != nil {
+		log.Printf("cannot get types: %s\n", err)
+		httpserver.Err(w, http.StatusInternalServerError, fmt.Sprintf("cannot get types: %s\n", err))
+		return
+	}
+	httpserver.Write(w, r, children)
+}
+
+// GetParentsHandler
+// @Summary Get the parents linked to a configuration
+// @Description Get the parents linked to a configuration
+// @Tags Items
+// @Router /item/{key}/parents [get]
+// @Param key path string true "the key for the item having the children"
+// @Produce json
+// @Failure 500 {string} there was an unexpected error processing the request
+// @Success 200 {string} the request was successful
+func GetParentsHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	key := vars["key"]
+	children, err := db.GetParents(key)
+	if err != nil {
+		log.Printf("cannot get types: %s\n", err)
+		httpserver.Err(w, http.StatusInternalServerError, fmt.Sprintf("cannot get types: %s\n", err))
+		return
+	}
+	httpserver.Write(w, r, children)
+}
+
+// SetTagHandler
+// @Summary Tag an item
+// @Description Tag the item identified by its key with a name
+// @Tags Tagging
+// @Router /item/{key}/tag/{name-value} [put]
+// @Param key path string true "the key for the item to tag"
+// @Param name-value path string true "the name / value of the tag in the format '{name}|{value}'. It is possible to have tags with no value, in which case the expression should be just '{name}'"
+// @Accepts json
+// @Produce json
+// @Failure 400 {string} the request is not correct
+// @Failure 500 {string} there was an unexpected error processing the request
+// @Success 204 {string} the request was successful
+func SetTagHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	key := vars["key"]
+	nv := vars["name-value"]
+	if len(nv) == 0 {
+		log.Printf("missing tag name-value\n")
+		httpserver.Err(w, http.StatusBadRequest, "missing tag name-value\n")
+		return
+	}
+	parts := strings.Split(nv, "|")
+	var name, value string
+	name = parts[0]
+	if len(parts) > 1 {
+		value = parts[1]
+	}
+	err := db.TagValue(key, name, value)
+	if err != nil {
+		log.Printf("cannot tag configuration: %s\n", err)
+		httpserver.Err(w, http.StatusInternalServerError, fmt.Sprintf("cannot tag configuration: %s\n", err))
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// DeleteTagHandler
+// @Summary Untag a configuration
+// @Description Delete the Tag associated with an item
+// @Tags Tagging
+// @Router /item/{key}/tag/{name} [delete]
+// @Param key path string true "the key for the item to untag"
+// @Param name path string true "the name of the tag to delete"
+// @Accepts json
+// @Produce json
+// @Failure 500 {string} there was an unexpected error processing the request
+// @Success 204 {string} the request was successful
+func DeleteTagHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	key := vars["key"]
+	name := vars["name"]
+	err := db.Untag(key, name)
+	if err != nil {
+		log.Printf("cannot tag configuration: %s\n", err)
+		httpserver.Err(w, http.StatusInternalServerError, fmt.Sprintf("cannot tag configuration: %s\n", err))
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// GetTagsHandler
+// @Summary Get all tags for a configuration
+// @Description Get all tags for a configuration
+// @Tags Tagging
+// @Router /item/{key}/tag [get]
+// @Param key path string true "the key for the item whose tags are to be retrieved"
+// @Produce json
+// @Failure 500 {string} there was an unexpected error processing the request
+// @Success 200 {string} the request was successful
+func GetTagsHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	key := vars["key"]
+	tags, err := db.GetTags(key)
+	if err != nil {
+		log.Printf("cannot get tags: %s\n", err)
+		httpserver.Err(w, http.StatusInternalServerError, fmt.Sprintf("cannot get tags: %s\n", err))
+		return
+	}
+	httpserver.Write(w, r, tags)
+}
+
+// GetAllTagsHandler
+// @Summary Get all tags for a all configurations
+// @Description Get all tags for a all configurations
+// @Tags Tagging
+// @Router /tag [get]
+// @Produce json
+// @Failure 500 {string} there was an unexpected error processing the request
+// @Success 200 {string} the request was successful
+func GetAllTagsHandler(w http.ResponseWriter, r *http.Request) {
+	tags, err := db.GetAllTags()
+	if err != nil {
+		log.Printf("cannot get tags: %s\n", err)
+		httpserver.Err(w, http.StatusInternalServerError, fmt.Sprintf("cannot get tags: %s\n", err))
+		return
+	}
+	httpserver.Write(w, r, tags)
+}
+
+// GetTagValueHandler
+// @Summary Get a tag value
+// @Description Get the value of a tag for a configuration
+// @Tags Tagging
+// @Router /item/{key}/tag/{name} [get]
+// @Param key path string true "the key for the item having the tag"
+// @Param name path string true "the name of the tag having the value that has to be retrieved"
+// @Produce json
+// @Failure 500 {string} there was an unexpected error processing the request
+// @Success 200 {string} the request was successful
+func GetTagValueHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	key := vars["key"]
+	name := vars["name"]
+	tags, err := db.GetTags(key)
+	if err != nil {
+		log.Printf("cannot get types: %s\n", err)
+		httpserver.Err(w, http.StatusInternalServerError, fmt.Sprintf("cannot get types: %s\n", err))
+		return
+	}
+	for _, tag := range tags {
+		if strings.EqualFold(tag.Name, name) {
+			w.Write([]byte(tag.Value))
+			return
+		}
+	}
+	w.WriteHeader(http.StatusNotFound)
+}
+
+// LinkHandler
+// @Summary Link two configurations
+// @Description Link two configurations
+// @Tags Linking
+// @Router /link/{from-key}/to/{to-key} [put]
+// @Param from-key path string true "the key for the first configuration to link"
+// @Param to-key path string true "the key for the second configuration to link"
+// @Accepts json
+// @Produce json
+// @Failure 500 {string} there was an unexpected error processing the request
+// @Success 204 {string} the request was successful
+func LinkHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	from := vars["from-key"]
+	to := vars["to-key"]
+	err := db.Link(from, to)
+	if err != nil {
+		log.Printf("cannot link configurations: %s\n", err)
+		httpserver.Err(w, http.StatusInternalServerError, fmt.Sprintf("cannot link configurations: %s\n", err))
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// UnlinkHandler
+// @Summary Unlink two configurations
+// @Description Unlink two configurations
+// @Tags Linking
+// @Router /unlink/{from-key}/to/{to-key} [delete]
+// @Param from-key path string true "the key for the first configuration to unlink"
+// @Param to-key path string true "the key for the second configuration to unlink"
+// @Accepts json
+// @Produce json
+// @Failure 500 {string} there was an unexpected error processing the request
+// @Success 204 {string} the request was successful
+func UnlinkHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	from := vars["from-key"]
+	to := vars["to-key"]
+	err := db.UnLink(from, to)
+	if err != nil {
+		log.Printf("cannot unlink configurations: %s\n", err)
+		httpserver.Err(w, http.StatusInternalServerError, fmt.Sprintf("cannot unlink configurations: %s\n", err))
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// GetLinksHandler
+// @Summary Get all configuration links
+// @Description Get all configuration links
+// @Tags Linking
+// @Router /link [get]
+// @Accepts json
+// @Produce json
+// @Failure 500 {string} there was an unexpected error processing the request
+// @Success 200 {string} the request was successful
+func GetLinksHandler(w http.ResponseWriter, r *http.Request) {
+	links, err := db.GetLinks()
+	if err != nil {
+		log.Printf("cannot retireve configuration links: %s\n", err)
+		httpserver.Err(w, http.StatusInternalServerError, fmt.Sprintf("cannot retireve configuration links: %s\n", err))
+		return
+	}
+	httpserver.Write(w, r, links)
+}
+
+// DeleteLinksHandler
+// @Summary Delete all configuration links
+// @Description Delete all configuration links
+// @Tags Linking
+// @Router /link [delete]
+// @Accepts json
+// @Produce json
+// @Failure 500 {string} there was an unexpected error processing the request
+// @Success 200 {string} the request was successful
+func DeleteLinksHandler(w http.ResponseWriter, r *http.Request) {
+	err := db.DeleteLinks()
+	if err != nil {
+		log.Printf("cannot retireve configuration links: %s\n", err)
+		httpserver.Err(w, http.StatusInternalServerError, fmt.Sprintf("cannot retireve configuration links: %s\n", err))
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }

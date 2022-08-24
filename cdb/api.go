@@ -14,7 +14,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/qri-io/jsonschema"
+	"github.com/invopop/jsonschema"
+	schemaValidation "github.com/qri-io/jsonschema"
 	_ "modernc.org/sqlite"
 	"os"
 	"path/filepath"
@@ -27,8 +28,9 @@ const (
 )
 
 var (
-	ErrNotFound        = errors.New("noy found")
-	ErrInvalidItemType = errors.New("invalid item type")
+	ErrNotFound         = errors.New("noy found")
+	ErrInvalidItemType  = errors.New("invalid item type")
+	ErrInvalidItemValue = errors.New("invalid item value, schema verification failed")
 )
 
 // DataBase the definition of the configuration database
@@ -38,22 +40,29 @@ type DataBase struct {
 
 // I the definition of an item
 type I struct {
-	Key     string
-	Type    string
-	Value   interface{}
-	Updated time.Time
+	Key     string      `json:"key"`
+	Type    string      `json:"type"`
+	Value   interface{} `json:"value"`
+	Updated time.Time   `json:"updated"`
+}
+
+// L the definition of a configuration link
+type L struct {
+	From string `json:"from"`
+	To   string `json:"to"`
 }
 
 // T the definition of an item tag
 type T struct {
-	Name  string
-	Value string
+	ItemKey string `json:"item_key,omitempty"`
+	Name    string `json:"name"`
+	Value   string `json:"value"`
 }
 
 // TT the definition of an item type
 type TT struct {
-	Key    string
-	Schema string
+	Key    string `json:"key"`
+	Schema string `json:"schema"`
 }
 
 // New create a new configuration database on the specified path
@@ -66,8 +75,8 @@ func New(path string) (*DataBase, error) {
 	return m, nil
 }
 
-// SetType set the json schema for an item type
-func (d *DataBase) SetType(key, schema string) error {
+// SetTypeFromString set the json schema for an item type using a json string representation of the schema
+func (d *DataBase) SetTypeFromString(key, schema string) error {
 	stmt := `INSERT INTO type(key, schema) VALUES(?, ?) ON CONFLICT(key) DO UPDATE SET schema = excluded.schema;`
 	statement, err := d.db.Prepare(stmt)
 	if err != nil {
@@ -75,6 +84,18 @@ func (d *DataBase) SetType(key, schema string) error {
 	}
 	_, err = statement.Exec(key, schema)
 	return err
+}
+
+// SetTypeFromStruct set the json schema for the item type by inferring it from the passed in object
+func (d *DataBase) SetTypeFromStruct(key string, obj interface{}) error {
+	// reflects the json schema from the specified object
+	schemaObj := jsonschema.Reflect(obj)
+	// marshal the object to json bytes
+	schema, err := json.Marshal(schemaObj)
+	if err != nil {
+		return err
+	}
+	return d.SetTypeFromString(key, string(schema[:]))
 }
 
 // DeleteType delete a json schema for an item type
@@ -90,16 +111,16 @@ func (d *DataBase) DeleteType(key string) error {
 }
 
 // SetItem set the value of an item
-func (d *DataBase) SetItem(key, iType string, value interface{}, validate bool) error {
+func (d *DataBase) SetItem(key, iType string, value interface{}, validate bool) (error, bool) {
 	if value == nil {
-		return fmt.Errorf("value not provided")
+		return fmt.Errorf("value not provided"), false
 	}
 	if sv, ok := value.(string); ok {
 		return d.setItemString(key, iType, sv, validate)
 	}
 	valueBytes, err := json.Marshal(value)
 	if err != nil {
-		return err
+		return err, false
 	}
 	return d.setItemString(key, iType, string(valueBytes[:]), validate)
 }
@@ -172,6 +193,27 @@ func (d *DataBase) TagValue(key, name, value string) error {
 	return err
 }
 
+// Untag a configuration
+func (d *DataBase) Untag(key string, name string) error {
+	stmt := `DELETE FROM tag WHERE item_key=? AND name=?; `
+	statement, err := d.db.Prepare(stmt)
+	if err != nil {
+		return err
+	}
+	_, err = statement.Exec(key, name)
+	return err
+}
+
+func (d *DataBase) DeleteLinks() interface{} {
+	stmt := `DELETE FROM link;`
+	statement, err := d.db.Prepare(stmt)
+	if err != nil {
+		return err
+	}
+	_, err = statement.Exec()
+	return err
+}
+
 // GetItem get an item by key
 func (d *DataBase) GetItem(key string) (*I, error) {
 	row := d.db.QueryRow(`SELECT type, value, updated FROM item WHERE key=?;`, key)
@@ -196,8 +238,7 @@ func (d *DataBase) GetItem(key string) (*I, error) {
 
 // GetTaggedItems get the items with the specified tag names
 func (d *DataBase) GetTaggedItems(tags ...string) ([]I, error) {
-	stmt := "SELECT DISTINCT i.key, i.type, i.value, i.updated FROM item i INNER JOIN tag t ON i.key = t.item_key WHERE t.name" +
-		toInSqlTags(tags)
+	stmt := "SELECT DISTINCT i.key, i.type, i.value, i.updated FROM item i INNER JOIN tag t ON i.key = t.item_key WHERE t.name" + toInSqlTags(tags)
 	row, err := d.db.Query(stmt)
 	if err != nil {
 		return nil, err
@@ -251,6 +292,34 @@ func (d *DataBase) GetTags(key string) ([]T, error) {
 		tags = append(tags, T{
 			Name:  name,
 			Value: value,
+		})
+	}
+	return tags, nil
+}
+
+func (d *DataBase) GetAllTags() ([]T, error) {
+	stmt := fmt.Sprintf("SELECT item_key, name, value FROM tag;")
+	row, err := d.db.Query(stmt)
+	if err != nil {
+		return nil, err
+	}
+	defer func(row *sql.Rows) {
+		err = row.Close()
+		if err != nil {
+			fmt.Printf("cannot close query row: %s\n", err)
+		}
+	}(row)
+	var itemKey, name, value string
+	var tags []T
+	for row.Next() {
+		err = row.Scan(&itemKey, &name, &value)
+		if err != nil {
+			return nil, err
+		}
+		tags = append(tags, T{
+			ItemKey: itemKey,
+			Name:    name,
+			Value:   value,
 		})
 	}
 	return tags, nil
@@ -354,6 +423,37 @@ func (d *DataBase) GetItems() ([]I, error) {
 	return items, nil
 }
 
+func (d *DataBase) GetLinks() ([]L, error) {
+	row, err := d.db.Query(`SELECT from_key, to_key FROM link;`)
+	if err != nil {
+		return nil, err
+	}
+	defer func(row *sql.Rows) {
+		err = row.Close()
+		if err != nil {
+			fmt.Printf("cannot close query row: %s\n", err)
+		}
+	}(row)
+	var (
+		from, to string
+		links    []L
+	)
+	for row.Next() {
+		err = row.Scan(&from, &to)
+		if err != nil {
+			if strings.Contains(err.Error(), "no rows") {
+				return nil, ErrNotFound
+			}
+			return nil, err
+		}
+		links = append(links, L{
+			From: from,
+			To:   to,
+		})
+	}
+	return links, nil
+}
+
 func (d *DataBase) GetTypes() ([]TT, error) {
 	row, err := d.db.Query(`SELECT key, schema FROM type;`)
 	if err != nil {
@@ -396,41 +496,41 @@ func (d *DataBase) GetSchema(key string) (string, error) {
 	return result, nil
 }
 
-func (d *DataBase) setItemString(key, iType, value string, validate bool) error {
+func (d *DataBase) setItemString(key, iType, value string, validate bool) (error, bool) {
 	// if a type is provided
 	if validate {
 		// get the schema for the type
 		s, err := d.GetSchema(iType)
 		if err != nil {
-			return err
+			return err, false
 		}
 		// validates only if a schema has been defined
 		if len(s) > 0 {
 			ctx := context.Background()
 			var schemaData = []byte(s)
-			rs := &jsonschema.Schema{}
+			rs := &schemaValidation.Schema{}
 			if err = json.Unmarshal(schemaData, rs); err != nil {
-				return fmt.Errorf("unmarshal schema: %s", err)
+				return fmt.Errorf("unmarshal schema: %s", err), false
 			}
 			// validate the value using the stored schema
 			errs, err := rs.ValidateBytes(ctx, []byte(value))
 			if err != nil {
-				return err
+				return err, true
 			}
 			if len(errs) > 0 {
-				return errs[0]
+				return errs[0], true
 			}
 		} else if len(iType) > 0 {
-			return ErrInvalidItemType
+			return ErrInvalidItemType, false
 		}
 	}
 	stmt := `INSERT INTO item(key, type, value, updated) VALUES(?, ?, ?, ?) ON CONFLICT(key) DO UPDATE SET type = excluded.type, value = excluded.value, updated = excluded.updated;`
 	statement, err := d.db.Prepare(stmt)
 	if err != nil {
-		return err
+		return err, false
 	}
 	_, err = statement.Exec(key, iType, value, time.Now().UTC().UnixNano())
-	return err
+	return err, false
 }
 
 func getDb(path string) (db *sql.DB, err error) {

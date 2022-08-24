@@ -30,14 +30,30 @@ func main() {
 	server := httpserver.New("SOURCE")
 	server.Http = func(router *mux.Router) {
 		router.HandleFunc("/ready", service.ReadyHandler).Methods(http.MethodGet)
+		// validation
 		router.HandleFunc("/type/{key}", service.SetTypeHandler).Methods(http.MethodPut)
 		router.HandleFunc("/type/{key}", service.GetTypeHandler).Methods(http.MethodGet)
 		router.HandleFunc("/type", service.GetTypesHandler).Methods(http.MethodGet)
 		router.HandleFunc("/type", service.DeleteTypeHandler).Methods(http.MethodDelete)
+		// configurations
 		router.HandleFunc("/item/{key}", service.SetItemHandler).Methods(http.MethodPut)
 		router.HandleFunc("/item/{key}", service.GetItemHandler).Methods(http.MethodGet)
 		router.HandleFunc("/item", service.GetItemsHandler).Methods(http.MethodGet)
 		router.HandleFunc("/item", service.DeleteItemHandler).Methods(http.MethodDelete)
+		router.HandleFunc("/item/{key}/children", service.GetChildrenHandler).Methods(http.MethodGet)
+		router.HandleFunc("/item/{key}/parents", service.GetParentsHandler).Methods(http.MethodGet)
+		router.HandleFunc("/item/tag/{tags}", service.GetTaggedItemsHandler).Methods(http.MethodGet)
+		// tagging
+		router.HandleFunc("/item/{key}/tag/{name-value}", service.SetTagHandler).Methods(http.MethodPut)
+		router.HandleFunc("/item/{key}/tag/{name}", service.DeleteTagHandler).Methods(http.MethodDelete)
+		router.HandleFunc("/item/{key}/tag", service.GetTagsHandler).Methods(http.MethodGet)
+		router.HandleFunc("/item/{key}/tag/{name}", service.GetTagValueHandler).Methods(http.MethodGet)
+		router.HandleFunc("/tag", service.GetAllTagsHandler).Methods(http.MethodGet)
+		// linking
+		router.HandleFunc("/link/{from-key}/to/{to-key}", service.LinkHandler).Methods(http.MethodPut)
+		router.HandleFunc("/unlink/{from-key}/to/{to-key}", service.UnlinkHandler).Methods(http.MethodDelete)
+		router.HandleFunc("/link", service.GetLinksHandler).Methods(http.MethodGet)
+		router.HandleFunc("/link", service.DeleteLinksHandler).Methods(http.MethodDelete)
 	}
 	server.Serve()
 }

@@ -25,7 +25,7 @@ func TestLifecycle(t *testing.T) {
 		t.Fatalf(err.Error())
 	}
 	// set json schema for type kv
-	err = d.SetType("kv",
+	err = d.SetTypeFromString("kv",
 		`{
     "$schema": "https://json-schema.org/draft/2019-09/schema",
     "$id": "http://example.com/example.json",
@@ -62,8 +62,13 @@ func TestLifecycle(t *testing.T) {
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
+	// another way to set the type by inferring the json schema from the passed in struct
+	err = d.SetTypeFromStruct("kv", []testV{})
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
 	// set item using kv schema
-	err = d.SetItem("test", "kv", `[
+	err, _ = d.SetItem("test", "kv", `[
     {
       "key": "name1",
       "value": "value1"
@@ -87,7 +92,7 @@ func TestLifecycle(t *testing.T) {
 		t.Fatalf(err.Error())
 	}
 	// set another item using a serializable struct
-	err = d.SetItem("test2", "kv", []testV{
+	err, _ = d.SetItem("test2", "kv", []testV{
 		{
 			Key:   "key1",
 			Value: "value1",
@@ -131,8 +136,8 @@ func TestLifecycle(t *testing.T) {
 	}
 	fmt.Println(i.Updated)
 	// delete type
-	d.DeleteType("kv")
+	_ = d.DeleteType("kv")
 	// delete item
-	d.DeleteItem("test")
-	d.DeleteItem("test2")
+	_ = d.DeleteItem("test")
+	_ = d.DeleteItem("test2")
 }

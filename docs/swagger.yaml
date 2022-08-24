@@ -118,6 +118,249 @@ paths:
       summary: Set the value of a configuration item
       tags:
       - Items
+  /item/{key}/children:
+    get:
+      description: Get the children linked to a configuration
+      parameters:
+      - description: the key for the item having the children
+        in: path
+        name: key
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Get the children linked to a configuration
+      tags:
+      - Items
+  /item/{key}/parents:
+    get:
+      description: Get the parents linked to a configuration
+      parameters:
+      - description: the key for the item having the children
+        in: path
+        name: key
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Get the parents linked to a configuration
+      tags:
+      - Items
+  /item/{key}/tag:
+    get:
+      description: Get all tags for a configuration
+      parameters:
+      - description: the key for the item whose tags are to be retrieved
+        in: path
+        name: key
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Get all tags for a configuration
+      tags:
+      - Tagging
+  /item/{key}/tag/{name-value}:
+    put:
+      description: Tag the item identified by its key with a name
+      parameters:
+      - description: the key for the item to tag
+        in: path
+        name: key
+        required: true
+        type: string
+      - description: the name / value of the tag in the format '{name}|{value}'. It
+          is possible to have tags with no value, in which case the expression should
+          be just '{name}'
+        in: path
+        name: name-value
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Tag an item
+      tags:
+      - Tagging
+  /item/{key}/tag/{name}:
+    delete:
+      description: Delete the Tag associated with an item
+      parameters:
+      - description: the key for the item to untag
+        in: path
+        name: key
+        required: true
+        type: string
+      - description: the name of the tag to delete
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Untag a configuration
+      tags:
+      - Tagging
+    get:
+      description: Get the value of a tag for a configuration
+      parameters:
+      - description: the key for the item having the tag
+        in: path
+        name: key
+        required: true
+        type: string
+      - description: the name of the tag having the value that has to be retrieved
+        in: path
+        name: name
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Get a tag value
+      tags:
+      - Tagging
+  /item/tag/{tags}:
+    get:
+      description: Get all the configurations that have the specified tags
+      parameters:
+      - description: a pipe separated list of tags (e.g. tag1|tag2|tag3) where tag
+          is the tag name, not the value
+        in: path
+        name: tags
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Get all the configurations that have the specified tags
+      tags:
+      - Items
+  /link:
+    delete:
+      description: Delete all configuration links
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Delete all configuration links
+      tags:
+      - Linking
+    get:
+      description: Get all configuration links
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Get all configuration links
+      tags:
+      - Linking
+  /link/{from-key}/to/{to-key}:
+    put:
+      description: Link two configurations
+      parameters:
+      - description: the key for the first configuration to link
+        in: path
+        name: from-key
+        required: true
+        type: string
+      - description: the key for the second configuration to link
+        in: path
+        name: to-key
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Link two configurations
+      tags:
+      - Linking
   /ready:
     get:
       description: Check any relevant backends are online and healthy.
@@ -134,7 +377,24 @@ paths:
             type: string
       summary: Check service readiness
       tags:
-      - General
+      - Health
+  /tag:
+    get:
+      description: Get all tags for a all configurations
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Get all tags for a all configurations
+      tags:
+      - Tagging
   /type:
     get:
       description: Get all the item types
@@ -151,7 +411,7 @@ paths:
             type: string
       summary: Get all the item types
       tags:
-      - Types
+      - Validation
   /type/{key}:
     delete:
       description: Delete a configuration type
@@ -178,7 +438,7 @@ paths:
             type: string
       summary: Delete a configuration type
       tags:
-      - Types
+      - Validation
     get:
       description: Get the json schema for a configuration item
       parameters:
@@ -208,7 +468,7 @@ paths:
             type: string
       summary: Get the json schema for a configuration item
       tags:
-      - Types
+      - Validation
     put:
       description: Set the json schema to validate an item of the specific type
       parameters:
@@ -240,5 +500,33 @@ paths:
             type: string
       summary: Set the validation for an item type
       tags:
-      - Types
+      - Validation
+  /unlink/{from-key}/to/{to-key}:
+    delete:
+      description: Unlink two configurations
+      parameters:
+      - description: the key for the first configuration to unlink
+        in: path
+        name: from-key
+        required: true
+        type: string
+      - description: the key for the second configuration to unlink
+        in: path
+        name: to-key
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Unlink two configurations
+      tags:
+      - Linking
 swagger: "2.0"

@@ -46,6 +46,41 @@ const docTemplate = `{
                 }
             }
         },
+        "/item/tag/{tags}": {
+            "get": {
+                "description": "Get all the configurations that have the specified tags",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Items"
+                ],
+                "summary": "Get all the configurations that have the specified tags",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "a pipe separated list of tags (e.g. tag1|tag2|tag3) where tag is the tag name, not the value",
+                        "name": "tags",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/item/{key}": {
             "get": {
                 "description": "Get value of a configuration item",
@@ -186,6 +221,333 @@ const docTemplate = `{
                 }
             }
         },
+        "/item/{key}/children": {
+            "get": {
+                "description": "Get the children linked to a configuration",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Items"
+                ],
+                "summary": "Get the children linked to a configuration",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "the key for the item having the children",
+                        "name": "key",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/item/{key}/parents": {
+            "get": {
+                "description": "Get the parents linked to a configuration",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Items"
+                ],
+                "summary": "Get the parents linked to a configuration",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "the key for the item having the children",
+                        "name": "key",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/item/{key}/tag": {
+            "get": {
+                "description": "Get all tags for a configuration",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Tagging"
+                ],
+                "summary": "Get all tags for a configuration",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "the key for the item whose tags are to be retrieved",
+                        "name": "key",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/item/{key}/tag/{name-value}": {
+            "put": {
+                "description": "Tag the item identified by its key with a name",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Tagging"
+                ],
+                "summary": "Tag an item",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "the key for the item to tag",
+                        "name": "key",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "the name / value of the tag in the format '{name}|{value}'. It is possible to have tags with no value, in which case the expression should be just '{name}'",
+                        "name": "name-value",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/item/{key}/tag/{name}": {
+            "get": {
+                "description": "Get the value of a tag for a configuration",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Tagging"
+                ],
+                "summary": "Get a tag value",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "the key for the item having the tag",
+                        "name": "key",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "the name of the tag having the value that has to be retrieved",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Delete the Tag associated with an item",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Tagging"
+                ],
+                "summary": "Untag a configuration",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "the key for the item to untag",
+                        "name": "key",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "the name of the tag to delete",
+                        "name": "name",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/link": {
+            "get": {
+                "description": "Get all configuration links",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Linking"
+                ],
+                "summary": "Get all configuration links",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "description": "Delete all configuration links",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Linking"
+                ],
+                "summary": "Delete all configuration links",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/link/{from-key}/to/{to-key}": {
+            "put": {
+                "description": "Link two configurations",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Linking"
+                ],
+                "summary": "Link two configurations",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "the key for the first configuration to link",
+                        "name": "from-key",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "the key for the second configuration to link",
+                        "name": "to-key",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/ready": {
             "get": {
                 "description": "Check any relevant backends are online and healthy.",
@@ -193,9 +555,35 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "General"
+                    "Health"
                 ],
                 "summary": "Check service readiness",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/tag": {
+            "get": {
+                "description": "Get all tags for a all configurations",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Tagging"
+                ],
+                "summary": "Get all tags for a all configurations",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -219,7 +607,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Types"
+                    "Validation"
                 ],
                 "summary": "Get all the item types",
                 "responses": {
@@ -245,7 +633,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Types"
+                    "Validation"
                 ],
                 "summary": "Get the json schema for a configuration item",
                 "parameters": [
@@ -290,7 +678,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Types"
+                    "Validation"
                 ],
                 "summary": "Set the validation for an item type",
                 "parameters": [
@@ -338,7 +726,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Types"
+                    "Validation"
                 ],
                 "summary": "Delete a configuration type",
                 "parameters": [
@@ -359,6 +747,48 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/unlink/{from-key}/to/{to-key}": {
+            "delete": {
+                "description": "Unlink two configurations",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Linking"
+                ],
+                "summary": "Unlink two configurations",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "the key for the first configuration to unlink",
+                        "name": "from-key",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "the key for the second configuration to unlink",
+                        "name": "to-key",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content",
                         "schema": {
                             "type": "string"
                         }
