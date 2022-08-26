@@ -8,7 +8,10 @@
 
 package src
 
-import "testing"
+import (
+	"fmt"
+	"testing"
+)
 
 func TestAll(t *testing.T) {
 	c := New("http://127.0.0.1:8080", "", "", nil)
@@ -28,7 +31,7 @@ func TestAll(t *testing.T) {
 		t.Fatalf(err.Error())
 	}
 	// tag the item with a name and also a value
-	err = c.TagItem("OPT_1", "status", "dev")
+	err = c.Tag("OPT_1", "status", "dev")
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
@@ -40,9 +43,33 @@ func TestAll(t *testing.T) {
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
+	// remove the association
+	err = c.Unlink("OPT_1", "OPT_2")
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
 	// associate the two items
 	err = c.Link("OPT_1", "OPT_2")
 	if err != nil {
 		t.Fatalf(err.Error())
+	}
+	// remove the tag
+	err = c.Untag("OPT_1", "status")
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+	items, err := c.GetChildren("OPT_1")
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+	for _, item := range items {
+		fmt.Println(item.Value)
+	}
+	items, err = c.GetParents("OPT_2")
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+	for _, item := range items {
+		fmt.Println(item.Value)
 	}
 }

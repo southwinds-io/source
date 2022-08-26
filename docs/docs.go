@@ -546,6 +546,46 @@ const docTemplate = `{
                         }
                     }
                 }
+            },
+            "delete": {
+                "description": "Unlink two configurations",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Linking"
+                ],
+                "summary": "Unlink two configurations",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "the key for the first configuration to unlink",
+                        "name": "from-key",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "the key for the second configuration to unlink",
+                        "name": "to-key",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
             }
         },
         "/ready": {
@@ -747,48 +787,6 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
-        "/unlink/{from-key}/to/{to-key}": {
-            "delete": {
-                "description": "Unlink two configurations",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Linking"
-                ],
-                "summary": "Unlink two configurations",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "the key for the first configuration to unlink",
-                        "name": "from-key",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "the key for the second configuration to unlink",
-                        "name": "to-key",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "No Content",
                         "schema": {
                             "type": "string"
                         }

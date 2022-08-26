@@ -51,7 +51,7 @@ func main() {
 		router.HandleFunc("/tag", service.GetAllTagsHandler).Methods(http.MethodGet)
 		// linking
 		router.HandleFunc("/link/{from-key}/to/{to-key}", service.LinkHandler).Methods(http.MethodPut)
-		router.HandleFunc("/unlink/{from-key}/to/{to-key}", service.UnlinkHandler).Methods(http.MethodDelete)
+		router.HandleFunc("/link/{from-key}/to/{to-key}", service.UnlinkHandler).Methods(http.MethodDelete)
 		router.HandleFunc("/link", service.GetLinksHandler).Methods(http.MethodGet)
 		router.HandleFunc("/link", service.DeleteLinksHandler).Methods(http.MethodDelete)
 	}

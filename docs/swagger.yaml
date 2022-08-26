@@ -334,6 +334,33 @@ paths:
       tags:
       - Linking
   /link/{from-key}/to/{to-key}:
+    delete:
+      description: Unlink two configurations
+      parameters:
+      - description: the key for the first configuration to unlink
+        in: path
+        name: from-key
+        required: true
+        type: string
+      - description: the key for the second configuration to unlink
+        in: path
+        name: to-key
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Unlink two configurations
+      tags:
+      - Linking
     put:
       description: Link two configurations
       parameters:
@@ -501,32 +528,4 @@ paths:
       summary: Set the validation for an item type
       tags:
       - Validation
-  /unlink/{from-key}/to/{to-key}:
-    delete:
-      description: Unlink two configurations
-      parameters:
-      - description: the key for the first configuration to unlink
-        in: path
-        name: from-key
-        required: true
-        type: string
-      - description: the key for the second configuration to unlink
-        in: path
-        name: to-key
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "204":
-          description: No Content
-          schema:
-            type: string
-        "500":
-          description: Internal Server Error
-          schema:
-            type: string
-      summary: Unlink two configurations
-      tags:
-      - Linking
 swagger: "2.0"

@@ -469,7 +469,7 @@ func LinkHandler(w http.ResponseWriter, r *http.Request) {
 // @Summary Unlink two configurations
 // @Description Unlink two configurations
 // @Tags Linking
-// @Router /unlink/{from-key}/to/{to-key} [delete]
+// @Router /link/{from-key}/to/{to-key} [delete]
 // @Param from-key path string true "the key for the first configuration to unlink"
 // @Param to-key path string true "the key for the second configuration to unlink"
 // @Accepts json
