@@ -31,10 +31,18 @@ functions:
       - docker push ${REPO_NAME}/${APP}:${BUILD}
       - docker push ${REPO_NAME}/${APP}:latest
 
-  - name: launch
-    description: starts a source container locally
+  - name: deploy
+    description: starts a source container locally as a docker service on port 8999
+    env:
+      OX_HTTP_USER: admin
+      OX_HTTP_PWD: admin
     run:
       - docker rm -f src > /dev/null
-      - docker run --name src -d -p 8999:8080 ${REPO_NAME}/${APP}
+      - docker run --name src --restart=always -d -p 8999:8080 -e OX_HTTP_USER=${OX_HTTP_USER} -e OX_HTTP_PWD=${OX_HTTP_PWD} ${REPO_NAME}/${APP}
       - python -mwebbrowser http://localhost:8999/api/
+
+  - name: dispose
+    description: deletes the running source container
+    run:
+      - docker rm -f src
 ...
