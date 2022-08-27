@@ -29,6 +29,8 @@ func main() {
 `, service.Version)
 	server := httpserver.New("SOURCE")
 	server.Http = func(router *mux.Router) {
+		// enables basic authentication
+		router.Use(server.AuthenticationMiddleware)
 		router.HandleFunc("/ready", service.ReadyHandler).Methods(http.MethodGet)
 		// validation
 		router.HandleFunc("/type/{key}", service.SetTypeHandler).Methods(http.MethodPut)
