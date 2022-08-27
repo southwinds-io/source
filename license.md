@@ -53,7 +53,8 @@ Accepting Warranty or Additional Liability. While redistributing the Work or Der
 
 END OF TERMS AND CONDITIONS
 
-Onix Config Manager - Source (c) 2022 southwinds.io
+Source Configuration Service
+© 2022 Southwinds Tech Ltd - www.southwinds.io
 
 Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.
 

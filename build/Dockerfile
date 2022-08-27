@@ -1,6 +1,6 @@
 #
 #    Source Configuration Service
-#    © 2022 Southwinds Tech Ltd - www.southwinds.io - All Rights Reserved.
+#    © 2022 Southwinds Tech Ltd - www.southwinds.io
 #
 FROM registry.access.redhat.com/ubi8/ubi-minimal
 
