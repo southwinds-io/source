@@ -27,5 +27,7 @@ functions:
       - $(build-linux)
       - docker pull ${BASE}
       - docker build -t ${REPO_NAME}/${APP}:${BUILD} --build-arg VERSION=${BUILD} ./build
+      - docker tag ${REPO_NAME}/${APP}:${BUILD} ${REPO_NAME}/${APP}:latest
       - docker push ${REPO_NAME}/${APP}:${BUILD}
+      - docker push ${REPO_NAME}/${APP}:latest
 ...
