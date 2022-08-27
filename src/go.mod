@@ -1,4 +1,4 @@
-module github.com/southwinds-io/source/client
+module github.com/southwinds-io/source/src
 
 go 1.19
 

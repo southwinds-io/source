@@ -2,6 +2,8 @@ module github.com/southwinds-io/source
 
 go 1.19
 
+replace github.com/southwinds-io/source/client => ./src
+
 require (
 	github.com/gatblau/onix/oxlib v0.0.0-20220822201901-d98a7fd323d4
 	github.com/google/uuid v1.3.0

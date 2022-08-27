@@ -30,4 +30,11 @@ functions:
       - docker tag ${REPO_NAME}/${APP}:${BUILD} ${REPO_NAME}/${APP}:latest
       - docker push ${REPO_NAME}/${APP}:${BUILD}
       - docker push ${REPO_NAME}/${APP}:latest
+
+  - name: launch
+    description: starts a source container locally
+    run:
+      - docker rm -f src > /dev/null
+      - docker run --name src -d -p 8999:8080 ${REPO_NAME}/${APP}
+      - python -mwebbrowser http://localhost:8999/api/
 ...

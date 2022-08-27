@@ -24,6 +24,7 @@ RUN microdnf update --disablerepo=* --enablerepo=ubi-8-appstream --enablerepo=ub
     # -M create the user with no /home
     useradd -M -u $UID -g $GID $UNAME && \
     rm -rf /var/cache/yum && \
+    mkdir ${SW_SRC_DATA_PATH} && chown -R ${UNAME} ${SW_SRC_DATA_PATH} && \
     microdnf clean all
 
 WORKDIR /app
