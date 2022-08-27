@@ -1,7 +1,31 @@
 ---
+env:
+  REPO_NAME: registry.gitlab.com/southwinds/images
+  VERSION: 1.0
+  BUILD: ${VERSION}-${ARTISAN_REF}
+  APP: source
+  BASE: registry.access.redhat.com/ubi8/ubi-minimal
+
 functions:
   - name: swagen
     description: generates/refreshes the OpenAPI specifications for Source's HTTP API
     run:
       - swag init -d "service" -g handlers.go
+
+  - name: build-linux
+    description: builds the Source Configuration Service for the linux platform
+    env:
+      GOOS: linux
+      GOARCH: amd64
+    run:
+      - rm -f ./build/src
+      - go build -ldflags="-X 'github.com/southwinds-io/source/service.Version=${BUILD}'" -o ./build/src -v
+
+  - name: build-image
+    description: builds and publishes the source service image
+    run:
+      - $(build-linux)
+      - docker pull ${BASE}
+      - docker build -t ${REPO_NAME}/${APP}:${BUILD} --build-arg VERSION=${BUILD} ./build
+      - docker push ${REPO_NAME}/${APP}:${BUILD}
 ...

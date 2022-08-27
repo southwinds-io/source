@@ -22,7 +22,7 @@ const homeFolder = ".source"
 
 // ensures the database exists
 func init() {
-	dbPath := os.Getenv("OX_SOURCE_DB_PATH")
+	dbPath := os.Getenv("SW_SRC_DATA_PATH")
 	if len(dbPath) == 0 {
 		currentUser, err := user.Current()
 		if err != nil {
