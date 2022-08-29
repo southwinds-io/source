@@ -11,32 +11,53 @@ package src
 import (
 	"fmt"
 	"testing"
+	"time"
 )
 
 func TestAll(t *testing.T) {
-	c := New("http://127.0.0.1:8080", "", "", nil)
+	c := New("http://127.0.0.1:8080", "admin", "adm1n", nil)
 	// define a json schema for a configuration
 	// note you do not need to create the schema, it is inferred from an empty struct in this case I am using
 	// ClientOptions{}
-	err := c.SetType("AAA", ClientOptions{})
+	err := c.SetType("AAA", ClientOptions{
+		InsecureSkipVerify: true,
+		Timeout:            5 * time.Second,
+	})
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
 	// set a configuration: note the actual value is any object you want, in this case I am using ClientOptions{}
-	err = c.SetItem("OPT_1", "AAA", ClientOptions{
+	err = c.Save("OPT_1", "AAA", ClientOptions{
 		InsecureSkipVerify: false,
 		Timeout:            60,
 	})
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
+	// retrieve the raw configuration item
+	raw, _ := c.LoadRaw("OPT_1")
+
+	// get the typed version of the item
+	opts, err := raw.Typed(new(ClientOptions))
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+	fmt.Println(opts)
+
+	// retrieve the typed version at once
+	opts, err = c.Load("OPT_1", new(ClientOptions))
+	if err != nil {
+		t.Fatalf(err.Error())
+	}
+	fmt.Println(opts)
+
 	// tag the item with a name and also a value
 	err = c.Tag("OPT_1", "status", "dev")
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
 	// set another item
-	err = c.SetItem("OPT_2", "AAA", ClientOptions{
+	err = c.Save("OPT_2", "AAA", ClientOptions{
 		InsecureSkipVerify: true,
 		Timeout:            120,
 	})
@@ -58,18 +79,10 @@ func TestAll(t *testing.T) {
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
-	items, err := c.GetChildren("OPT_1")
+	// get the list of raw configuration item children
+	items, err := c.LoadChildren("OPT_1", new(ClientOptions))
 	if err != nil {
 		t.Fatalf(err.Error())
 	}
-	for _, item := range items {
-		fmt.Println(item.Value)
-	}
-	items, err = c.GetParents("OPT_2")
-	if err != nil {
-		t.Fatalf(err.Error())
-	}
-	for _, item := range items {
-		fmt.Println(item.Value)
-	}
+	fmt.Println(items)
 }

@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"github.com/gatblau/onix/oxlib/httpserver"
 	"github.com/gorilla/mux"
+	"github.com/southwinds-io/source/client"
 	"github.com/southwinds-io/source/service"
 	"net/http"
 )
@@ -26,14 +27,14 @@ func main() {
 |                                       |
 +++++++| configuration database |++++++++
 %s
-`, service.Version)
+`, src.Version)
 	server := httpserver.New("SOURCE")
 	server.Http = func(router *mux.Router) {
 		// enables basic authentication
 		router.Use(server.AuthenticationMiddleware)
 		router.HandleFunc("/ready", service.ReadyHandler).Methods(http.MethodGet)
 		// validation
-		router.HandleFunc("/type/{key}", service.SetTypeHandler).Methods(http.MethodPut)
+		router.HandleFunc("/type", service.SetTypeHandler).Methods(http.MethodPut)
 		router.HandleFunc("/type/{key}", service.GetTypeHandler).Methods(http.MethodGet)
 		router.HandleFunc("/type", service.GetTypesHandler).Methods(http.MethodGet)
 		router.HandleFunc("/type", service.DeleteTypeHandler).Methods(http.MethodDelete)

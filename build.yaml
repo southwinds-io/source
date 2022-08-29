@@ -10,7 +10,7 @@ functions:
   - name: swagen
     description: generates/refreshes the OpenAPI specifications for Source's HTTP API
     run:
-      - swag init -d "service" -g handlers.go
+      - swag init -d "service,./src" -g handlers.go
 
   - name: build-linux
     description: builds the Source Configuration Service for the linux platform

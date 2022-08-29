@@ -9,11 +9,12 @@
 package service
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/gatblau/onix/oxlib/httpserver"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
-	"github.com/southwinds-io/source/cdb"
+	src "github.com/southwinds-io/source/client"
 	_ "github.com/southwinds-io/source/docs"
 	"io"
 	"log"
@@ -38,8 +39,8 @@ import (
 // @Failure 500 {string} the service is not ready
 // @Success 200 {string} the service is ready
 func ReadyHandler(w http.ResponseWriter, r *http.Request) {
-	_, err := db.GetItem(uuid.NewString())
-	if err != nil && err != cdb.ErrNotFound {
+	_, err := db.getItem(uuid.NewString())
+	if err != nil && err != ErrNotFound {
 		log.Printf("service not ready: %s\n", err)
 		httpserver.Err(w, http.StatusInternalServerError, fmt.Sprintf("service not ready: %s\n", err))
 		return
@@ -51,24 +52,28 @@ func ReadyHandler(w http.ResponseWriter, r *http.Request) {
 // @Summary Set the validation for an item type
 // @Description Set the json schema to validate an item of the specific type
 // @Tags Validation
-// @Router /type/{key} [put]
-// @Param key path string true "the key for the type to set"
-// @Param schema body string true "the json schema to apply to the item type"
+// @Router /type [put]
+// @Param schema body src.TT true "the json schema to apply to the item type and an example prototype"
 // @Accepts json
 // @Produce json
 // @Failure 400 {string} the request is not correct
 // @Failure 500 {string} there was an unexpected error processing the request
 // @Success 204 {string} the request was successful
 func SetTypeHandler(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	key := vars["key"]
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		log.Printf("cannot read request body: %s\n", err)
 		httpserver.Err(w, http.StatusBadRequest, fmt.Sprintf("cannot read request body: %s\n", err))
 		return
 	}
-	err = db.SetTypeFromString(key, string(body[:]))
+	t := new(src.TT)
+	err = json.Unmarshal(body, t)
+	if err != nil {
+		log.Printf("cannot unmarshal request body: %s\n", err)
+		httpserver.Err(w, http.StatusBadRequest, fmt.Sprintf("cannot unmarshal request body: %s\n", err))
+		return
+	}
+	err = db.setTypeFromString(t.Key, t.Schema, t.Proto)
 	if err != nil {
 		log.Printf("cannot set type: %s\n", err)
 		httpserver.Err(w, http.StatusInternalServerError, fmt.Sprintf("cannot set type: %s\n", err))
@@ -91,9 +96,9 @@ func SetTypeHandler(w http.ResponseWriter, r *http.Request) {
 func GetTypeHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	key := vars["key"]
-	schema, err := db.GetSchema(key)
+	typeInfo, err := db.getTypeInfo(key)
 	if err != nil {
-		if err == cdb.ErrNotFound {
+		if err == ErrNotFound {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
@@ -101,7 +106,7 @@ func GetTypeHandler(w http.ResponseWriter, r *http.Request) {
 		httpserver.Err(w, http.StatusInternalServerError, fmt.Sprintf("cannot get schema: %s\n", err))
 		return
 	}
-	w.Write([]byte(schema))
+	httpserver.Write(w, r, typeInfo)
 }
 
 // GetTypesHandler
@@ -113,7 +118,7 @@ func GetTypeHandler(w http.ResponseWriter, r *http.Request) {
 // @Failure 500 {string} there was an unexpected error processing the request
 // @Success 200 {string} the request was successful
 func GetTypesHandler(w http.ResponseWriter, r *http.Request) {
-	types, err := db.GetTypes()
+	types, err := db.getTypes()
 	if err != nil {
 		log.Printf("cannot get types: %s\n", err)
 		httpserver.Err(w, http.StatusInternalServerError, fmt.Sprintf("cannot get types: %s\n", err))
@@ -167,9 +172,9 @@ func SetItemHandler(w http.ResponseWriter, r *http.Request) {
 		httpserver.Err(w, http.StatusBadRequest, fmt.Sprintf("cannot read request body: %s\n", err))
 		return
 	}
-	err, isValidationError := db.SetItem(key, itemType, string(body[:]), len(itemType) > 0)
+	err, isValidationError := db.SetItem(key, itemType, string(body[:]))
 	if err != nil {
-		if err == cdb.ErrInvalidItemType || isValidationError {
+		if err == ErrInvalidItemType || isValidationError {
 			log.Printf("cannot set item: %s\n", err)
 			httpserver.Err(w, http.StatusBadRequest, fmt.Sprintf("cannot set item: %s\n", err))
 			return
@@ -195,9 +200,9 @@ func SetItemHandler(w http.ResponseWriter, r *http.Request) {
 func GetItemHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	key := vars["key"]
-	item, err := db.GetItem(key)
+	item, err := db.getItem(key)
 	if err != nil {
-		if err == cdb.ErrNotFound {
+		if err == ErrNotFound {
 			log.Println(err)
 			w.WriteHeader(http.StatusNotFound)
 			return
@@ -218,7 +223,7 @@ func GetItemHandler(w http.ResponseWriter, r *http.Request) {
 // @Failure 500 {string} there was an unexpected error processing the request
 // @Success 200 {string} the request was successful
 func GetItemsHandler(w http.ResponseWriter, r *http.Request) {
-	items, err := db.GetItems()
+	items, err := db.getItems()
 	if err != nil {
 		log.Printf("cannot get types: %s\n", err)
 		httpserver.Err(w, http.StatusInternalServerError, fmt.Sprintf("cannot get types: %s\n", err))
@@ -240,7 +245,7 @@ func GetTaggedItemsHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	tags := vars["tags"]
 	tagList := strings.Split(tags, "|")
-	items, err := db.GetTaggedItems(tagList...)
+	items, err := db.getTaggedItems(tagList...)
 	if err != nil {
 		log.Printf("cannot get tagged items: %s\n", err)
 		httpserver.Err(w, http.StatusInternalServerError, fmt.Sprintf("cannot get tagged items: %s\n", err))
@@ -283,7 +288,7 @@ func DeleteItemHandler(w http.ResponseWriter, r *http.Request) {
 func GetChildrenHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	key := vars["key"]
-	children, err := db.GetChildren(key)
+	children, err := db.getChildren(key)
 	if err != nil {
 		log.Printf("cannot get types: %s\n", err)
 		httpserver.Err(w, http.StatusInternalServerError, fmt.Sprintf("cannot get types: %s\n", err))
@@ -304,7 +309,7 @@ func GetChildrenHandler(w http.ResponseWriter, r *http.Request) {
 func GetParentsHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	key := vars["key"]
-	children, err := db.GetParents(key)
+	children, err := db.getParents(key)
 	if err != nil {
 		log.Printf("cannot get types: %s\n", err)
 		httpserver.Err(w, http.StatusInternalServerError, fmt.Sprintf("cannot get types: %s\n", err))
@@ -340,7 +345,7 @@ func SetTagHandler(w http.ResponseWriter, r *http.Request) {
 	if len(parts) > 1 {
 		value = parts[1]
 	}
-	err := db.TagValue(key, name, value)
+	err := db.tagValue(key, name, value)
 	if err != nil {
 		log.Printf("cannot tag configuration: %s\n", err)
 		httpserver.Err(w, http.StatusInternalServerError, fmt.Sprintf("cannot tag configuration: %s\n", err))
@@ -364,7 +369,7 @@ func DeleteTagHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	key := vars["key"]
 	name := vars["name"]
-	err := db.Untag(key, name)
+	err := db.untag(key, name)
 	if err != nil {
 		log.Printf("cannot tag configuration: %s\n", err)
 		httpserver.Err(w, http.StatusInternalServerError, fmt.Sprintf("cannot tag configuration: %s\n", err))
@@ -385,7 +390,7 @@ func DeleteTagHandler(w http.ResponseWriter, r *http.Request) {
 func GetTagsHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	key := vars["key"]
-	tags, err := db.GetTags(key)
+	tags, err := db.getTags(key)
 	if err != nil {
 		log.Printf("cannot get tags: %s\n", err)
 		httpserver.Err(w, http.StatusInternalServerError, fmt.Sprintf("cannot get tags: %s\n", err))
@@ -403,7 +408,7 @@ func GetTagsHandler(w http.ResponseWriter, r *http.Request) {
 // @Failure 500 {string} there was an unexpected error processing the request
 // @Success 200 {string} the request was successful
 func GetAllTagsHandler(w http.ResponseWriter, r *http.Request) {
-	tags, err := db.GetAllTags()
+	tags, err := db.getAllTags()
 	if err != nil {
 		log.Printf("cannot get tags: %s\n", err)
 		httpserver.Err(w, http.StatusInternalServerError, fmt.Sprintf("cannot get tags: %s\n", err))
@@ -426,7 +431,7 @@ func GetTagValueHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	key := vars["key"]
 	name := vars["name"]
-	tags, err := db.GetTags(key)
+	tags, err := db.getTags(key)
 	if err != nil {
 		log.Printf("cannot get types: %s\n", err)
 		httpserver.Err(w, http.StatusInternalServerError, fmt.Sprintf("cannot get types: %s\n", err))
@@ -480,7 +485,7 @@ func UnlinkHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	from := vars["from-key"]
 	to := vars["to-key"]
-	err := db.UnLink(from, to)
+	err := db.unLink(from, to)
 	if err != nil {
 		log.Printf("cannot unlink configurations: %s\n", err)
 		httpserver.Err(w, http.StatusInternalServerError, fmt.Sprintf("cannot unlink configurations: %s\n", err))
@@ -499,7 +504,7 @@ func UnlinkHandler(w http.ResponseWriter, r *http.Request) {
 // @Failure 500 {string} there was an unexpected error processing the request
 // @Success 200 {string} the request was successful
 func GetLinksHandler(w http.ResponseWriter, r *http.Request) {
-	links, err := db.GetLinks()
+	links, err := db.getLinks()
 	if err != nil {
 		log.Printf("cannot retireve configuration links: %s\n", err)
 		httpserver.Err(w, http.StatusInternalServerError, fmt.Sprintf("cannot retireve configuration links: %s\n", err))
@@ -518,7 +523,7 @@ func GetLinksHandler(w http.ResponseWriter, r *http.Request) {
 // @Failure 500 {string} there was an unexpected error processing the request
 // @Success 200 {string} the request was successful
 func DeleteLinksHandler(w http.ResponseWriter, r *http.Request) {
-	err := db.DeleteLinks()
+	err := db.deleteLinks()
 	if err != nil {
 		log.Printf("cannot retireve configuration links: %s\n", err)
 		httpserver.Err(w, http.StatusInternalServerError, fmt.Sprintf("cannot retireve configuration links: %s\n", err))

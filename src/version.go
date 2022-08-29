@@ -6,7 +6,7 @@
   to be licensed under the same terms as the rest of the code.
 */
 
-package service
+package src
 
 // Version placeholder variable for the version number
 // this value gets overridden at build time with the correct version in the build file

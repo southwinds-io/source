@@ -6,16 +6,22 @@
   to be licensed under the same terms as the rest of the code.
 */
 
-package cdb
+package service
 
 import (
 	"context"
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/rand"
+	"crypto/sha256"
 	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/invopop/jsonschema"
 	schemaValidation "github.com/qri-io/jsonschema"
+	"github.com/southwinds-io/source/client"
+	"io"
 	_ "modernc.org/sqlite"
 	"os"
 	"path/filepath"
@@ -38,35 +44,8 @@ type DataBase struct {
 	db *sql.DB
 }
 
-// I the definition of an item
-type I struct {
-	Key     string      `json:"key"`
-	Type    string      `json:"type"`
-	Value   interface{} `json:"value"`
-	Updated time.Time   `json:"updated"`
-}
-
-// L the definition of a configuration link
-type L struct {
-	From string `json:"from"`
-	To   string `json:"to"`
-}
-
-// T the definition of an item tag
-type T struct {
-	ItemKey string `json:"item_key,omitempty"`
-	Name    string `json:"name"`
-	Value   string `json:"value"`
-}
-
-// TT the definition of an item type
-type TT struct {
-	Key    string `json:"key"`
-	Schema string `json:"schema"`
-}
-
-// New create a new configuration database on the specified path
-func New(path string) (*DataBase, error) {
+// newDb create a new configuration database on the specified path
+func newDb(path string) (*DataBase, error) {
 	var err error
 	m := new(DataBase)
 	if m.db, err = getDb(path); err != nil {
@@ -75,19 +54,19 @@ func New(path string) (*DataBase, error) {
 	return m, nil
 }
 
-// SetTypeFromString set the json schema for an item type using a json string representation of the schema
-func (d *DataBase) SetTypeFromString(key, schema string) error {
-	stmt := `INSERT INTO type(key, schema) VALUES(?, ?) ON CONFLICT(key) DO UPDATE SET schema = excluded.schema;`
+// setTypeFromString set the json schema for an item type using a json string representation of the schema
+func (d *DataBase) setTypeFromString(key string, schema, proto []byte) error {
+	stmt := `INSERT INTO type(key, schema, proto) VALUES(?, ?, ?) ON CONFLICT(key) DO UPDATE SET schema = excluded.schema, proto = excluded.proto;`
 	statement, err := d.db.Prepare(stmt)
 	if err != nil {
 		return err
 	}
-	_, err = statement.Exec(key, schema)
+	_, err = statement.Exec(key, schema, proto)
 	return err
 }
 
-// SetTypeFromStruct set the json schema for the item type by inferring it from the passed in object
-func (d *DataBase) SetTypeFromStruct(key string, obj interface{}) error {
+// setTypeFromStruct set the json schema for the item type by inferring it from the passed in object
+func (d *DataBase) setTypeFromStruct(key string, obj interface{}) error {
 	// reflects the json schema from the specified object
 	schemaObj := jsonschema.Reflect(obj)
 	// marshal the object to json bytes
@@ -95,7 +74,11 @@ func (d *DataBase) SetTypeFromStruct(key string, obj interface{}) error {
 	if err != nil {
 		return err
 	}
-	return d.SetTypeFromString(key, string(schema[:]))
+	proto, err := json.Marshal(obj)
+	if err != nil {
+		return err
+	}
+	return d.setTypeFromString(key, schema, proto)
 }
 
 // DeleteType delete a json schema for an item type
@@ -111,18 +94,18 @@ func (d *DataBase) DeleteType(key string) error {
 }
 
 // SetItem set the value of an item
-func (d *DataBase) SetItem(key, iType string, value interface{}, validate bool) (error, bool) {
+func (d *DataBase) SetItem(key, iType string, value interface{}) (error, bool) {
 	if value == nil {
 		return fmt.Errorf("value not provided"), false
 	}
 	if sv, ok := value.(string); ok {
-		return d.setItemString(key, iType, sv, validate)
+		return d.setItemString(key, iType, sv)
 	}
 	valueBytes, err := json.Marshal(value)
 	if err != nil {
 		return err, false
 	}
-	return d.setItemString(key, iType, string(valueBytes[:]), validate)
+	return d.setItemString(key, iType, string(valueBytes[:]))
 }
 
 // DeleteItem delete the specified item
@@ -166,8 +149,8 @@ func (d *DataBase) Link(from, to string) error {
 	return err
 }
 
-// UnLink remove an association between two items
-func (d *DataBase) UnLink(from, to string) error {
+// unLink remove an association between two items
+func (d *DataBase) unLink(from, to string) error {
 	stmt := `DELETE FROM link WHERE from_key=? AND to_key=?; `
 	statement, err := d.db.Prepare(stmt)
 	if err != nil {
@@ -177,13 +160,13 @@ func (d *DataBase) UnLink(from, to string) error {
 	return err
 }
 
-// Tag an item with  a name only (value is empty)
-func (d *DataBase) Tag(key, name string) error {
-	return d.TagValue(key, name, "")
+// tag an item with  a name only (value is empty)
+func (d *DataBase) tag(key, name string) error {
+	return d.tagValue(key, name, "")
 }
 
-// TagValue tag an item with a name and a value
-func (d *DataBase) TagValue(key, name, value string) error {
+// tagValue tag an item with a name and a value
+func (d *DataBase) tagValue(key, name, value string) error {
 	stmt := `INSERT INTO tag(item_key, name, value) VALUES(?, ?, ?) ON CONFLICT(item_key, name) DO UPDATE SET value = excluded.value;`
 	statement, err := d.db.Prepare(stmt)
 	if err != nil {
@@ -193,8 +176,8 @@ func (d *DataBase) TagValue(key, name, value string) error {
 	return err
 }
 
-// Untag a configuration
-func (d *DataBase) Untag(key string, name string) error {
+// untag a configuration
+func (d *DataBase) untag(key string, name string) error {
 	stmt := `DELETE FROM tag WHERE item_key=? AND name=?; `
 	statement, err := d.db.Prepare(stmt)
 	if err != nil {
@@ -204,7 +187,7 @@ func (d *DataBase) Untag(key string, name string) error {
 	return err
 }
 
-func (d *DataBase) DeleteLinks() interface{} {
+func (d *DataBase) deleteLinks() interface{} {
 	stmt := `DELETE FROM link;`
 	statement, err := d.db.Prepare(stmt)
 	if err != nil {
@@ -214,12 +197,13 @@ func (d *DataBase) DeleteLinks() interface{} {
 	return err
 }
 
-// GetItem get an item by key
-func (d *DataBase) GetItem(key string) (*I, error) {
+// getItem get an item by key
+func (d *DataBase) getItem(key string) (*src.I, error) {
 	row := d.db.QueryRow(`SELECT type, value, updated FROM item WHERE key=?;`, key)
 	var (
-		itype, value string
-		updated      sql.NullInt64
+		itype   string
+		value   []byte
+		updated sql.NullInt64
 	)
 	err := row.Scan(&itype, &value, &updated)
 	if err != nil {
@@ -228,16 +212,20 @@ func (d *DataBase) GetItem(key string) (*I, error) {
 		}
 		return nil, err
 	}
-	return &I{
+	vv, decErr := decrypt(value)
+	if decErr != nil {
+		return nil, err
+	}
+	return &src.I{
 		Key:     key,
 		Type:    itype,
-		Value:   value,
+		Value:   vv,
 		Updated: time.Unix(0, updated.Int64).UTC(),
 	}, nil
 }
 
-// GetTaggedItems get the items with the specified tag names
-func (d *DataBase) GetTaggedItems(tags ...string) ([]I, error) {
+// getTaggedItems get the items with the specified tag names
+func (d *DataBase) getTaggedItems(tags ...string) ([]src.I, error) {
 	stmt := "SELECT DISTINCT i.key, i.type, i.value, i.updated FROM item i INNER JOIN tag t ON i.key = t.item_key WHERE t.name" + toInSqlTags(tags)
 	row, err := d.db.Query(stmt)
 	if err != nil {
@@ -250,27 +238,32 @@ func (d *DataBase) GetTaggedItems(tags ...string) ([]I, error) {
 		}
 	}(row)
 	var (
-		key, itype, value string
-		updated           sql.NullInt64
+		key, iType string
+		value      []byte
+		updated    sql.NullInt64
 	)
-	var items []I
+	var items []src.I
 	for row.Next() {
-		err = row.Scan(&key, &itype, &value, &updated)
+		err = row.Scan(&key, &iType, &value, &updated)
 		if err != nil {
 			return nil, err
 		}
-		items = append(items, I{
+		vv, decErr := decrypt(value)
+		if decErr != nil {
+			return nil, err
+		}
+		items = append(items, src.I{
 			Key:     key,
-			Type:    itype,
-			Value:   value,
+			Type:    iType,
+			Value:   vv,
 			Updated: time.Unix(0, updated.Int64).UTC(),
 		})
 	}
 	return items, nil
 }
 
-// GetTags get the tags (name & value) of an item
-func (d *DataBase) GetTags(key string) ([]T, error) {
+// getTags get the tags (name & value) of an item
+func (d *DataBase) getTags(key string) ([]src.T, error) {
 	stmt := fmt.Sprintf("SELECT name, value FROM tag WHERE item_key=?;")
 	row, err := d.db.Query(stmt, key)
 	if err != nil {
@@ -283,13 +276,13 @@ func (d *DataBase) GetTags(key string) ([]T, error) {
 		}
 	}(row)
 	var name, value string
-	var tags []T
+	var tags []src.T
 	for row.Next() {
 		err = row.Scan(&name, &value)
 		if err != nil {
 			return nil, err
 		}
-		tags = append(tags, T{
+		tags = append(tags, src.T{
 			Name:  name,
 			Value: value,
 		})
@@ -297,7 +290,7 @@ func (d *DataBase) GetTags(key string) ([]T, error) {
 	return tags, nil
 }
 
-func (d *DataBase) GetAllTags() ([]T, error) {
+func (d *DataBase) getAllTags() ([]src.T, error) {
 	stmt := fmt.Sprintf("SELECT item_key, name, value FROM tag;")
 	row, err := d.db.Query(stmt)
 	if err != nil {
@@ -310,13 +303,13 @@ func (d *DataBase) GetAllTags() ([]T, error) {
 		}
 	}(row)
 	var itemKey, name, value string
-	var tags []T
+	var tags []src.T
 	for row.Next() {
 		err = row.Scan(&itemKey, &name, &value)
 		if err != nil {
 			return nil, err
 		}
-		tags = append(tags, T{
+		tags = append(tags, src.T{
 			ItemKey: itemKey,
 			Name:    name,
 			Value:   value,
@@ -325,8 +318,8 @@ func (d *DataBase) GetAllTags() ([]T, error) {
 	return tags, nil
 }
 
-// GetChildren get the child items linked to a specified item
-func (d *DataBase) GetChildren(parentKey string) ([]I, error) {
+// getChildren get the child items linked to a specified item
+func (d *DataBase) getChildren(parentKey string) ([]src.I, error) {
 	row, err := d.db.Query("SELECT i.key, i.type, i.value, i.updated FROM link l INNER JOIN item i ON l.to_key = i.key WHERE l.from_key=?;", parentKey)
 	if err != nil {
 		return nil, err
@@ -338,27 +331,32 @@ func (d *DataBase) GetChildren(parentKey string) ([]I, error) {
 		}
 	}(row)
 	var (
-		key, itype, value string
-		updated           sql.NullInt64
+		key, iType string
+		value      []byte
+		updated    sql.NullInt64
 	)
-	var items []I
+	var items []src.I
 	for row.Next() {
-		err = row.Scan(&key, &itype, &value, &updated)
+		err = row.Scan(&key, &iType, &value, &updated)
 		if err != nil {
 			return nil, err
 		}
-		items = append(items, I{
+		vv, decErr := decrypt(value)
+		if decErr != nil {
+			return nil, err
+		}
+		items = append(items, src.I{
 			Key:     key,
-			Type:    itype,
-			Value:   value,
+			Type:    iType,
+			Value:   vv,
 			Updated: time.Unix(0, updated.Int64).UTC(),
 		})
 	}
 	return items, nil
 }
 
-// GetParents get the parent items linked to a specified item
-func (d *DataBase) GetParents(childKey string) ([]I, error) {
+// getParents get the parent items linked to a specified item
+func (d *DataBase) getParents(childKey string) ([]src.I, error) {
 	row, err := d.db.Query("SELECT i.key, i.type, i.value, i.updated FROM link l INNER JOIN item i ON l.from_key = i.key where l.to_key=?;", childKey)
 	if err != nil {
 		return nil, err
@@ -370,26 +368,31 @@ func (d *DataBase) GetParents(childKey string) ([]I, error) {
 		}
 	}(row)
 	var (
-		key, itype, value string
-		updated           sql.NullInt64
+		key, iType string
+		value      []byte
+		updated    sql.NullInt64
 	)
-	var items []I
+	var items []src.I
 	for row.Next() {
-		err = row.Scan(&key, &itype, &value, &updated)
+		err = row.Scan(&key, &iType, &value, &updated)
 		if err != nil {
 			return nil, err
 		}
-		items = append(items, I{
+		vv, decErr := decrypt(value)
+		if decErr != nil {
+			return nil, err
+		}
+		items = append(items, src.I{
 			Key:     key,
-			Type:    itype,
-			Value:   value,
+			Type:    iType,
+			Value:   vv,
 			Updated: time.Unix(0, updated.Int64).UTC(),
 		})
 	}
 	return items, nil
 }
 
-func (d *DataBase) GetItems() ([]I, error) {
+func (d *DataBase) getItems() ([]src.I, error) {
 	row, err := d.db.Query(`SELECT key, type, value, updated FROM item;`)
 	if err != nil {
 		return nil, err
@@ -401,9 +404,10 @@ func (d *DataBase) GetItems() ([]I, error) {
 		}
 	}(row)
 	var (
-		key, iType, value string
-		updated           sql.NullInt64
-		items             []I
+		key, iType string
+		value      []byte
+		updated    sql.NullInt64
+		items      []src.I
 	)
 	for row.Next() {
 		err = row.Scan(&key, &iType, &value, &updated)
@@ -413,17 +417,21 @@ func (d *DataBase) GetItems() ([]I, error) {
 			}
 			return nil, err
 		}
-		items = append(items, I{
+		vv, decErr := decrypt(value)
+		if decErr != nil {
+			return nil, decErr
+		}
+		items = append(items, src.I{
 			Key:     key,
 			Type:    iType,
-			Value:   value,
+			Value:   vv,
 			Updated: time.Unix(0, updated.Int64).UTC(),
 		})
 	}
 	return items, nil
 }
 
-func (d *DataBase) GetLinks() ([]L, error) {
+func (d *DataBase) getLinks() ([]src.L, error) {
 	row, err := d.db.Query(`SELECT from_key, to_key FROM link;`)
 	if err != nil {
 		return nil, err
@@ -436,7 +444,7 @@ func (d *DataBase) GetLinks() ([]L, error) {
 	}(row)
 	var (
 		from, to string
-		links    []L
+		links    []src.L
 	)
 	for row.Next() {
 		err = row.Scan(&from, &to)
@@ -446,7 +454,7 @@ func (d *DataBase) GetLinks() ([]L, error) {
 			}
 			return nil, err
 		}
-		links = append(links, L{
+		links = append(links, src.L{
 			From: from,
 			To:   to,
 		})
@@ -454,8 +462,8 @@ func (d *DataBase) GetLinks() ([]L, error) {
 	return links, nil
 }
 
-func (d *DataBase) GetTypes() ([]TT, error) {
-	row, err := d.db.Query(`SELECT key, schema FROM type;`)
+func (d *DataBase) getTypes() ([]src.TT, error) {
+	row, err := d.db.Query(`SELECT key, schema, proto FROM type;`)
 	if err != nil {
 		return nil, err
 	}
@@ -465,71 +473,74 @@ func (d *DataBase) GetTypes() ([]TT, error) {
 			fmt.Printf("cannot close query row: %s\n", err)
 		}
 	}(row)
-	var key, schema string
-	var types []TT
+	var key string
+	var schema, proto []byte
+	var types []src.TT
 	for row.Next() {
-		err = row.Scan(&key, &schema)
+		err = row.Scan(&key, &schema, &proto)
 		if err != nil {
 			if strings.Contains(err.Error(), "no rows") {
 				return nil, ErrNotFound
 			}
 			return nil, err
 		}
-		types = append(types, TT{
+		types = append(types, src.TT{
 			Key:    key,
 			Schema: schema,
+			Proto:  proto,
 		})
 	}
 	return types, nil
 }
 
-func (d *DataBase) GetSchema(key string) (string, error) {
-	row := d.db.QueryRow(`SELECT schema FROM type WHERE key = ?;`, key)
-	var result string
-	err := row.Scan(&result)
+func (d *DataBase) getTypeInfo(key string) (*src.TT, error) {
+	row := d.db.QueryRow(`SELECT schema, proto FROM type WHERE key = ?;`, key)
+	var schema, proto []byte
+	err := row.Scan(&schema, &proto)
 	if err != nil {
 		if strings.Contains(err.Error(), "no rows") {
-			return "", ErrNotFound
+			return nil, ErrNotFound
 		}
-		return "", err
+		return nil, err
 	}
-	return result, nil
+	return &src.TT{Schema: schema, Proto: proto}, nil
 }
 
-func (d *DataBase) setItemString(key, iType, value string, validate bool) (error, bool) {
-	// if a type is provided
-	if validate {
-		// get the schema for the type
-		s, err := d.GetSchema(iType)
-		if err != nil {
-			return err, false
-		}
-		// validates only if a schema has been defined
-		if len(s) > 0 {
-			ctx := context.Background()
-			var schemaData = []byte(s)
-			rs := &schemaValidation.Schema{}
-			if err = json.Unmarshal(schemaData, rs); err != nil {
-				return fmt.Errorf("unmarshal schema: %s", err), false
-			}
-			// validate the value using the stored schema
-			errs, err := rs.ValidateBytes(ctx, []byte(value))
-			if err != nil {
-				return err, true
-			}
-			if len(errs) > 0 {
-				return errs[0], true
-			}
-		} else if len(iType) > 0 {
-			return ErrInvalidItemType, false
-		}
+func (d *DataBase) setItemString(key, iType, value string) (error, bool) {
+	// get the schema for the type
+	typeInfo, err := d.getTypeInfo(iType)
+	if err != nil {
+		return err, false
 	}
+	// validates only if a schema has been defined
+	if typeInfo == nil {
+		return ErrInvalidItemType, false
+	}
+
+	ctx := context.Background()
+	rs := &schemaValidation.Schema{}
+	if err = json.Unmarshal(typeInfo.Schema, rs); err != nil {
+		return fmt.Errorf("unmarshal schema: %s", err), false
+	}
+	// validate the value using the stored schema
+	errs, err := rs.ValidateBytes(ctx, []byte(value))
+	if err != nil {
+		return err, true
+	}
+	if len(errs) > 0 {
+		return errs[0], true
+	}
+
 	stmt := `INSERT INTO item(key, type, value, updated) VALUES(?, ?, ?, ?) ON CONFLICT(key) DO UPDATE SET type = excluded.type, value = excluded.value, updated = excluded.updated;`
 	statement, err := d.db.Prepare(stmt)
 	if err != nil {
 		return err, false
 	}
-	_, err = statement.Exec(key, iType, value, time.Now().UTC().UnixNano())
+	vv, encErr := encrypt([]byte(value))
+	if encErr != nil {
+		return err, false
+	}
+	_, err = statement.Exec(key, iType, vv, time.Now().UTC().UnixNano())
 	return err, false
 }
 
@@ -575,7 +586,7 @@ func createSchema(db *sql.DB) error {
 	if err := exec(db, `CREATE TABLE item (
         "key"        VARCHAR(100) NOT NULL PRIMARY KEY,
         "type"       VARCHAR(100) NOT NULL,
-        "value"      TEXT NOT NULL,
+        "value"      BLOB NOT NULL,
 		"updated"    INTEGER NOT NULL
 	    );`); err != nil {
 		return err
@@ -600,7 +611,8 @@ func createSchema(db *sql.DB) error {
 	// stores json schemas for validation
 	if err := exec(db, `CREATE TABLE type (
         "key"        VARCHAR(100) NOT NULL PRIMARY KEY,
-        "schema"     TEXT NOT NULL
+        "schema"     BLOB NOT NULL,
+        "proto"      BLOB NOT NULL
 	    );`); err != nil {
 		return err
 	}
@@ -629,3 +641,35 @@ func toInSqlTags(tag []string) string {
 	}
 	return fmt.Sprintf(" IN (%s);", out.String())
 }
+
+func encrypt(input []byte) ([]byte, error) {
+	key := sha256.Sum256([]byte(K))
+	block, _ := aes.NewCipher(key[:])
+	gcm, _ := cipher.NewGCM(block)
+	nonce := make([]byte, gcm.NonceSize())
+	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
+		return nil, err
+	}
+	return gcm.Seal(nonce, nonce, input, nil), nil
+}
+
+func decrypt(cipherBytes []byte) ([]byte, error) {
+	key := sha256.Sum256([]byte(K))
+	block, err := aes.NewCipher(key[:])
+	if err != nil {
+		return nil, err
+	}
+	gcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, err
+	}
+	nonce := cipherBytes[:gcm.NonceSize()]
+	cipherBytes = cipherBytes[gcm.NonceSize():]
+	bytes, err := gcm.Open(nil, nonce, cipherBytes, nil)
+	if err != nil {
+		return nil, err
+	}
+	return bytes, nil
+}
+
+const K = "VCh4IbXtYuFYnNa4L0xC1F49gZKZaNgrqJPMvNmac5T1W3zH0e"

@@ -2,7 +2,9 @@ module github.com/southwinds-io/source
 
 go 1.19
 
-replace github.com/southwinds-io/source/client => ./src
+replace (
+	github.com/southwinds-io/source/client => ./src
+)
 
 require (
 	github.com/gatblau/onix/oxlib v0.0.0-20220822201901-d98a7fd323d4
@@ -39,6 +41,7 @@ require (
 	github.com/qri-io/jsonpointer v0.1.1 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20200410134404-eec4a21b6bb0 // indirect
 	github.com/rs/zerolog v1.18.0 // indirect
+	github.com/southwinds-io/source/cdb v0.0.0-20220823224627-cf9c0f2e9129 // indirect
 	github.com/swaggo/files v0.0.0-20210815190702-a29dd2bc99b2 // indirect
 	github.com/swaggo/http-swagger v1.2.6 // indirect
 	golang.org/x/mod v0.6.0-dev.0.20220106191415-9b9b3d81d5e3 // indirect

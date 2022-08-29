@@ -15,8 +15,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/invopop/jsonschema"
-	"github.com/southwinds-io/source/cdb"
-	"github.com/southwinds-io/source/service"
 	"io"
 	"net/http"
 	"time"
@@ -60,17 +58,32 @@ func New(host, user, pwd string, opts *ClientOptions) Client {
 func (c *Client) SetType(key string, obj any) error {
 	// reflects the json schema from the specified object
 	schemaObj := jsonschema.Reflect(obj)
-	// marshal the object to json bytes
-	schema, err := json.Marshal(schemaObj)
+	schemaBytes, err := json.Marshal(schemaObj)
 	if err != nil {
 		return err
 	}
-	request, err := http.NewRequest(http.MethodPut, c.url("/type/%s", key), bytes.NewReader(schema))
+	protoBytes, err := json.Marshal(obj)
+	if err != nil {
+		return err
+	}
+	typeInfo := &TT{
+		Key:    key,
+		Schema: schemaBytes,
+		Proto:  protoBytes,
+	}
+	infoBytes, err := json.Marshal(typeInfo)
+	if err != nil {
+		return err
+	}
+	if err != nil {
+		return err
+	}
+	request, err := http.NewRequest(http.MethodPut, c.url("/type"), bytes.NewReader(infoBytes))
 	if err != nil {
 		return err
 	}
 	request.Header.Set("Authorization", c.token)
-	request.Header.Set("User-Agent", fmt.Sprintf("SOURCE-CLIENT-%s", service.Version))
+	request.Header.Set("User-Agent", fmt.Sprintf("SW-SOURCE-CLIENT-%s", Version))
 	resp, reqErr := c.Do(request)
 	if reqErr != nil {
 		return reqErr
@@ -81,8 +94,12 @@ func (c *Client) SetType(key string, obj any) error {
 	return nil
 }
 
-func (c *Client) SetItem(key, itemType string, obj any) error {
-	objBytes, err := json.Marshal(obj)
+// Save the configuration item under the unique key using the validation defined by itemType
+func (c *Client) Save(key, itemType string, item any) error {
+	if len(itemType) == 0 {
+		return fmt.Errorf("item type is required to validate the item data")
+	}
+	objBytes, err := json.Marshal(item)
 	if err != nil {
 		return err
 	}
@@ -91,7 +108,7 @@ func (c *Client) SetItem(key, itemType string, obj any) error {
 		return err
 	}
 	request.Header.Set("Authorization", c.token)
-	request.Header.Set("User-Agent", fmt.Sprintf("SOURCE-CLIENT-%s", service.Version))
+	request.Header.Set("User-Agent", fmt.Sprintf("SW-SOURCE-CLIENT-%s", Version))
 	if len(itemType) > 0 {
 		request.Header.Set("Source-Type", itemType)
 	}
@@ -100,18 +117,55 @@ func (c *Client) SetItem(key, itemType string, obj any) error {
 		return reqErr
 	}
 	if resp.StatusCode > 299 {
-		return fmt.Errorf("cannot set item, source server responded with: %s", resp.Status)
+		return fmt.Errorf("cannot save item, source server responded with: %s", resp.Status)
 	}
 	return nil
 }
 
-func (c *Client) GetChildren(itemKey string) ([]cdb.I, error) {
+// LoadRaw the raw configuration item identified by key
+func (c *Client) LoadRaw(itemKey string) (*I, error) {
+	request, err := http.NewRequest(http.MethodGet, c.url("/item/%s", itemKey), nil)
+	if err != nil {
+		return nil, err
+	}
+	request.Header.Set("Authorization", c.token)
+	request.Header.Set("User-Agent", fmt.Sprintf("SW-SOURCE-CLIENT-%s", Version))
+	resp, reqErr := c.Do(request)
+	if reqErr != nil {
+		return nil, reqErr
+	}
+	if resp.StatusCode > 299 {
+		return nil, fmt.Errorf("cannot get item, source server responded with: %s", resp.Status)
+	}
+	body, readErr := io.ReadAll(resp.Body)
+	if readErr != nil {
+		return nil, fmt.Errorf("cannot read response body: %s", readErr)
+	}
+	item := new(I)
+	err = json.Unmarshal(body, item)
+	if err != nil {
+		return nil, fmt.Errorf("cannot unmarshal response body: %s", err)
+	}
+	return item, nil
+}
+
+// Load the typed configuration item identified by key using the specified item prototype
+// The prototype is an empty instance of the type to get
+func (c *Client) Load(itemKey string, prototype any) (any, error) {
+	i, err := c.LoadRaw(itemKey)
+	if err != nil {
+		return nil, err
+	}
+	return i.Typed(prototype)
+}
+
+func (c *Client) LoadChildrenRaw(itemKey string) (IL, error) {
 	request, err := http.NewRequest(http.MethodGet, c.url("/item/%s/children", itemKey), nil)
 	if err != nil {
 		return nil, err
 	}
 	request.Header.Set("Authorization", c.token)
-	request.Header.Set("User-Agent", fmt.Sprintf("SOURCE-CLIENT-%s", service.Version))
+	request.Header.Set("User-Agent", fmt.Sprintf("SW-SOURCE-CLIENT-%s", Version))
 	resp, reqErr := c.Do(request)
 	if reqErr != nil {
 		return nil, reqErr
@@ -123,7 +177,7 @@ func (c *Client) GetChildren(itemKey string) ([]cdb.I, error) {
 	if readErr != nil {
 		return nil, fmt.Errorf("cannot read response body: %s", readErr)
 	}
-	var items []cdb.I
+	var items IL
 	err = json.Unmarshal(body, &items)
 	if err != nil {
 		return nil, fmt.Errorf("cannot unmarshal response body: %s", err)
@@ -131,13 +185,24 @@ func (c *Client) GetChildren(itemKey string) ([]cdb.I, error) {
 	return items, nil
 }
 
-func (c *Client) GetParents(itemKey string) ([]cdb.I, error) {
+func (c *Client) LoadChildren(itemKey string, item any) ([]any, error) {
+	items, err := c.LoadChildrenRaw(itemKey)
+	if err != nil {
+		return nil, err
+	}
+	return items.Typed(func() any {
+		instance := item
+		return instance
+	})
+}
+
+func (c *Client) LoadParentsRaw(itemKey string) (IL, error) {
 	request, err := http.NewRequest(http.MethodGet, c.url("/item/%s/parents", itemKey), nil)
 	if err != nil {
 		return nil, err
 	}
 	request.Header.Set("Authorization", c.token)
-	request.Header.Set("User-Agent", fmt.Sprintf("SOURCE-CLIENT-%s", service.Version))
+	request.Header.Set("User-Agent", fmt.Sprintf("SW-SOURCE-CLIENT-%s", Version))
 	resp, reqErr := c.Do(request)
 	if reqErr != nil {
 		return nil, reqErr
@@ -149,12 +214,23 @@ func (c *Client) GetParents(itemKey string) ([]cdb.I, error) {
 	if readErr != nil {
 		return nil, fmt.Errorf("cannot read response body: %s", readErr)
 	}
-	var items []cdb.I
+	var items IL
 	err = json.Unmarshal(body, &items)
 	if err != nil {
 		return nil, fmt.Errorf("cannot unmarshal response body: %s", err)
 	}
 	return items, nil
+}
+
+func (c *Client) LoadParents(itemKey string, item any) ([]any, error) {
+	items, err := c.LoadParentsRaw(itemKey)
+	if err != nil {
+		return nil, err
+	}
+	return items.Typed(func() any {
+		instance := item
+		return instance
+	})
 }
 
 func (c *Client) Tag(itemKey, tagName, tagValue string) error {
@@ -173,7 +249,7 @@ func (c *Client) Tag(itemKey, tagName, tagValue string) error {
 		return err
 	}
 	request.Header.Set("Authorization", c.token)
-	request.Header.Set("User-Agent", fmt.Sprintf("SOURCE-CLIENT-%s", service.Version))
+	request.Header.Set("User-Agent", fmt.Sprintf("SW-SOURCE-CLIENT-%s", Version))
 	resp, reqErr := c.Do(request)
 	if reqErr != nil {
 		return reqErr
@@ -193,7 +269,7 @@ func (c *Client) Untag(itemKey, tagName string) error {
 		return err
 	}
 	request.Header.Set("Authorization", c.token)
-	request.Header.Set("User-Agent", fmt.Sprintf("SOURCE-CLIENT-%s", service.Version))
+	request.Header.Set("User-Agent", fmt.Sprintf("SW-SOURCE-CLIENT-%s", Version))
 	resp, reqErr := c.Do(request)
 	if reqErr != nil {
 		return reqErr
@@ -210,7 +286,7 @@ func (c *Client) Link(fromKey, toKey string) error {
 		return err
 	}
 	request.Header.Set("Authorization", c.token)
-	request.Header.Set("User-Agent", fmt.Sprintf("SOURCE-CLIENT-%s", service.Version))
+	request.Header.Set("User-Agent", fmt.Sprintf("SW-SOURCE-CLIENT-%s", Version))
 	resp, reqErr := c.Do(request)
 	if reqErr != nil {
 		return reqErr
@@ -227,7 +303,7 @@ func (c *Client) Unlink(fromKey, toKey string) error {
 		return err
 	}
 	request.Header.Set("Authorization", c.token)
-	request.Header.Set("User-Agent", fmt.Sprintf("SOURCE-CLIENT-%s", service.Version))
+	request.Header.Set("User-Agent", fmt.Sprintf("SW-SOURCE-CLIENT-%s", Version))
 	resp, reqErr := c.Do(request)
 	if reqErr != nil {
 		return reqErr

@@ -1,3 +1,17 @@
+definitions:
+  src.TT:
+    properties:
+      key:
+        type: string
+      proto:
+        items:
+          type: integer
+        type: array
+      schema:
+        items:
+          type: integer
+        type: array
+    type: object
 info:
   contact:
     email: info@southwinds.io
@@ -439,6 +453,33 @@ paths:
       summary: Get all the item types
       tags:
       - Validation
+    put:
+      description: Set the json schema to validate an item of the specific type
+      parameters:
+      - description: the json schema to apply to the item type and an example prototype
+        in: body
+        name: schema
+        required: true
+        schema:
+          $ref: '#/definitions/src.TT'
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: No Content
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Set the validation for an item type
+      tags:
+      - Validation
   /type/{key}:
     delete:
       description: Delete a configuration type
@@ -494,38 +535,6 @@ paths:
           schema:
             type: string
       summary: Get the json schema for a configuration item
-      tags:
-      - Validation
-    put:
-      description: Set the json schema to validate an item of the specific type
-      parameters:
-      - description: the key for the type to set
-        in: path
-        name: key
-        required: true
-        type: string
-      - description: the json schema to apply to the item type
-        in: body
-        name: schema
-        required: true
-        schema:
-          type: string
-      produces:
-      - application/json
-      responses:
-        "204":
-          description: No Content
-          schema:
-            type: string
-        "400":
-          description: Bad Request
-          schema:
-            type: string
-        "500":
-          description: Internal Server Error
-          schema:
-            type: string
-      summary: Set the validation for an item type
       tags:
       - Validation
 swagger: "2.0"

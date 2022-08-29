@@ -9,21 +9,20 @@
 package service
 
 import (
-	"github.com/southwinds-io/source/cdb"
 	"log"
 	"os"
 	"os/user"
 	"path/filepath"
 )
 
-var db *cdb.DataBase
+var db *DataBase
 
 const homeFolder = ".source"
 
 // ensures the database exists
 func init() {
 	dbPath := getPath()
-	d, err := cdb.New(dbPath)
+	d, err := newDb(dbPath)
 	if err != nil {
 		log.Fatalf("cannot create database: %s", err)
 		panic(err)

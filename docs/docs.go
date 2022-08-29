@@ -664,6 +664,47 @@ const docTemplate = `{
                         }
                     }
                 }
+            },
+            "put": {
+                "description": "Set the json schema to validate an item of the specific type",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Validation"
+                ],
+                "summary": "Set the validation for an item type",
+                "parameters": [
+                    {
+                        "description": "the json schema to apply to the item type and an example prototype",
+                        "name": "schema",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/src.TT"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
             }
         },
         "/type/{key}": {
@@ -712,54 +753,6 @@ const docTemplate = `{
                     }
                 }
             },
-            "put": {
-                "description": "Set the json schema to validate an item of the specific type",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Validation"
-                ],
-                "summary": "Set the validation for an item type",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "the key for the type to set",
-                        "name": "key",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "the json schema to apply to the item type",
-                        "name": "schema",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "No Content",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "string"
-                        }
-                    }
-                }
-            },
             "delete": {
                 "description": "Delete a configuration type",
                 "produces": [
@@ -796,6 +789,28 @@ const docTemplate = `{
                         "schema": {
                             "type": "string"
                         }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "src.TT": {
+            "type": "object",
+            "properties": {
+                "key": {
+                    "type": "string"
+                },
+                "proto": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "schema": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
                     }
                 }
             }
