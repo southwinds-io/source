@@ -14,11 +14,11 @@ import (
 	"github.com/gatblau/onix/oxlib/httpserver"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
-	src "github.com/southwinds-io/source/client"
-	_ "github.com/southwinds-io/source/docs"
 	"io"
 	"log"
 	"net/http"
+	"southwinds.dev/source/client"
+	_ "southwinds.dev/source/docs"
 	"strings"
 )
 

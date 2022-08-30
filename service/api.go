@@ -20,11 +20,11 @@ import (
 	"fmt"
 	"github.com/invopop/jsonschema"
 	schemaValidation "github.com/qri-io/jsonschema"
-	"github.com/southwinds-io/source/client"
 	"io"
 	_ "modernc.org/sqlite"
 	"os"
 	"path/filepath"
+	"southwinds.dev/source/client"
 	"strings"
 	"time"
 )

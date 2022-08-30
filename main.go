@@ -12,9 +12,9 @@ import (
 	"fmt"
 	"github.com/gatblau/onix/oxlib/httpserver"
 	"github.com/gorilla/mux"
-	"github.com/southwinds-io/source/client"
-	"github.com/southwinds-io/source/service"
 	"net/http"
+	"southwinds.dev/source/client"
+	"southwinds.dev/source/service"
 )
 
 func main() {
