@@ -11,12 +11,12 @@ package service
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/gatblau/onix/oxlib/httpserver"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"io"
 	"log"
 	"net/http"
+	h "southwinds.dev/http"
 	"southwinds.dev/source/client"
 	_ "southwinds.dev/source/docs"
 	"strings"
@@ -42,7 +42,7 @@ func ReadyHandler(w http.ResponseWriter, r *http.Request) {
 	_, err := db.getItem(uuid.NewString())
 	if err != nil && err != ErrNotFound {
 		log.Printf("service not ready: %s\n", err)
-		httpserver.Err(w, http.StatusInternalServerError, fmt.Sprintf("service not ready: %s\n", err))
+		h.Err(w, http.StatusInternalServerError, fmt.Sprintf("service not ready: %s\n", err))
 		return
 	}
 	w.WriteHeader(http.StatusOK)
@@ -63,20 +63,20 @@ func SetTypeHandler(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		log.Printf("cannot read request body: %s\n", err)
-		httpserver.Err(w, http.StatusBadRequest, fmt.Sprintf("cannot read request body: %s\n", err))
+		h.Err(w, http.StatusBadRequest, fmt.Sprintf("cannot read request body: %s\n", err))
 		return
 	}
 	t := new(src.TT)
 	err = json.Unmarshal(body, t)
 	if err != nil {
 		log.Printf("cannot unmarshal request body: %s\n", err)
-		httpserver.Err(w, http.StatusBadRequest, fmt.Sprintf("cannot unmarshal request body: %s\n", err))
+		h.Err(w, http.StatusBadRequest, fmt.Sprintf("cannot unmarshal request body: %s\n", err))
 		return
 	}
 	err = db.setTypeFromString(t.Key, t.Schema, t.Proto)
 	if err != nil {
 		log.Printf("cannot set type: %s\n", err)
-		httpserver.Err(w, http.StatusInternalServerError, fmt.Sprintf("cannot set type: %s\n", err))
+		h.Err(w, http.StatusInternalServerError, fmt.Sprintf("cannot set type: %s\n", err))
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -103,10 +103,10 @@ func GetTypeHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		log.Printf("cannot get schema: %s\n", err)
-		httpserver.Err(w, http.StatusInternalServerError, fmt.Sprintf("cannot get schema: %s\n", err))
+		h.Err(w, http.StatusInternalServerError, fmt.Sprintf("cannot get schema: %s\n", err))
 		return
 	}
-	httpserver.Write(w, r, typeInfo)
+	h.Write(w, r, typeInfo)
 }
 
 // GetTypesHandler
@@ -121,10 +121,10 @@ func GetTypesHandler(w http.ResponseWriter, r *http.Request) {
 	types, err := db.getTypes()
 	if err != nil {
 		log.Printf("cannot get types: %s\n", err)
-		httpserver.Err(w, http.StatusInternalServerError, fmt.Sprintf("cannot get types: %s\n", err))
+		h.Err(w, http.StatusInternalServerError, fmt.Sprintf("cannot get types: %s\n", err))
 		return
 	}
-	httpserver.Write(w, r, types)
+	h.Write(w, r, types)
 }
 
 // DeleteTypeHandler
@@ -143,7 +143,7 @@ func DeleteTypeHandler(w http.ResponseWriter, r *http.Request) {
 	err := db.DeleteType(key)
 	if err != nil {
 		log.Printf("cannot delete configuration: %s\n", err)
-		httpserver.Err(w, http.StatusInternalServerError, fmt.Sprintf("cannot delete configuration: %s\n", err))
+		h.Err(w, http.StatusInternalServerError, fmt.Sprintf("cannot delete configuration: %s\n", err))
 		return
 	}
 	w.WriteHeader(http.StatusOK)
@@ -169,18 +169,18 @@ func SetItemHandler(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		log.Printf("cannot read request body: %s\n", err)
-		httpserver.Err(w, http.StatusBadRequest, fmt.Sprintf("cannot read request body: %s\n", err))
+		h.Err(w, http.StatusBadRequest, fmt.Sprintf("cannot read request body: %s\n", err))
 		return
 	}
 	err, isValidationError := db.SetItem(key, itemType, string(body[:]))
 	if err != nil {
 		if err == ErrInvalidItemType || isValidationError {
 			log.Printf("cannot set item: %s\n", err)
-			httpserver.Err(w, http.StatusBadRequest, fmt.Sprintf("cannot set item: %s\n", err))
+			h.Err(w, http.StatusBadRequest, fmt.Sprintf("cannot set item: %s\n", err))
 			return
 		}
 		log.Printf("cannot set item: %s\n", err)
-		httpserver.Err(w, http.StatusInternalServerError, fmt.Sprintf("cannot set item: %s\n", err))
+		h.Err(w, http.StatusInternalServerError, fmt.Sprintf("cannot set item: %s\n", err))
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -208,10 +208,10 @@ func GetItemHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		log.Printf("cannot get configuration: %s\n", err)
-		httpserver.Err(w, http.StatusInternalServerError, fmt.Sprintf("cannot get configuration: %s\n", err))
+		h.Err(w, http.StatusInternalServerError, fmt.Sprintf("cannot get configuration: %s\n", err))
 		return
 	}
-	httpserver.Write(w, r, item)
+	h.Write(w, r, item)
 }
 
 // GetItemsHandler
@@ -226,10 +226,10 @@ func GetItemsHandler(w http.ResponseWriter, r *http.Request) {
 	items, err := db.getItems()
 	if err != nil {
 		log.Printf("cannot get types: %s\n", err)
-		httpserver.Err(w, http.StatusInternalServerError, fmt.Sprintf("cannot get types: %s\n", err))
+		h.Err(w, http.StatusInternalServerError, fmt.Sprintf("cannot get types: %s\n", err))
 		return
 	}
-	httpserver.Write(w, r, items)
+	h.Write(w, r, items)
 }
 
 // GetTaggedItemsHandler
@@ -248,10 +248,10 @@ func GetTaggedItemsHandler(w http.ResponseWriter, r *http.Request) {
 	items, err := db.getTaggedItems(tagList...)
 	if err != nil {
 		log.Printf("cannot get tagged items: %s\n", err)
-		httpserver.Err(w, http.StatusInternalServerError, fmt.Sprintf("cannot get tagged items: %s\n", err))
+		h.Err(w, http.StatusInternalServerError, fmt.Sprintf("cannot get tagged items: %s\n", err))
 		return
 	}
-	httpserver.Write(w, r, items)
+	h.Write(w, r, items)
 }
 
 // DeleteItemHandler
@@ -270,7 +270,7 @@ func DeleteItemHandler(w http.ResponseWriter, r *http.Request) {
 	err := db.DeleteItem(key)
 	if err != nil {
 		log.Printf("cannot delete configuration: %s\n", err)
-		httpserver.Err(w, http.StatusInternalServerError, fmt.Sprintf("cannot delete configuration: %s\n", err))
+		h.Err(w, http.StatusInternalServerError, fmt.Sprintf("cannot delete configuration: %s\n", err))
 		return
 	}
 	w.WriteHeader(http.StatusOK)
@@ -291,10 +291,10 @@ func GetChildrenHandler(w http.ResponseWriter, r *http.Request) {
 	children, err := db.getChildren(key)
 	if err != nil {
 		log.Printf("cannot get types: %s\n", err)
-		httpserver.Err(w, http.StatusInternalServerError, fmt.Sprintf("cannot get types: %s\n", err))
+		h.Err(w, http.StatusInternalServerError, fmt.Sprintf("cannot get types: %s\n", err))
 		return
 	}
-	httpserver.Write(w, r, children)
+	h.Write(w, r, children)
 }
 
 // GetParentsHandler
@@ -312,10 +312,10 @@ func GetParentsHandler(w http.ResponseWriter, r *http.Request) {
 	children, err := db.getParents(key)
 	if err != nil {
 		log.Printf("cannot get types: %s\n", err)
-		httpserver.Err(w, http.StatusInternalServerError, fmt.Sprintf("cannot get types: %s\n", err))
+		h.Err(w, http.StatusInternalServerError, fmt.Sprintf("cannot get types: %s\n", err))
 		return
 	}
-	httpserver.Write(w, r, children)
+	h.Write(w, r, children)
 }
 
 // SetTagHandler
@@ -336,7 +336,7 @@ func SetTagHandler(w http.ResponseWriter, r *http.Request) {
 	nv := vars["name-value"]
 	if len(nv) == 0 {
 		log.Printf("missing tag name-value\n")
-		httpserver.Err(w, http.StatusBadRequest, "missing tag name-value\n")
+		h.Err(w, http.StatusBadRequest, "missing tag name-value\n")
 		return
 	}
 	parts := strings.Split(nv, "|")
@@ -348,7 +348,7 @@ func SetTagHandler(w http.ResponseWriter, r *http.Request) {
 	err := db.tagValue(key, name, value)
 	if err != nil {
 		log.Printf("cannot tag configuration: %s\n", err)
-		httpserver.Err(w, http.StatusInternalServerError, fmt.Sprintf("cannot tag configuration: %s\n", err))
+		h.Err(w, http.StatusInternalServerError, fmt.Sprintf("cannot tag configuration: %s\n", err))
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -372,7 +372,7 @@ func DeleteTagHandler(w http.ResponseWriter, r *http.Request) {
 	err := db.untag(key, name)
 	if err != nil {
 		log.Printf("cannot tag configuration: %s\n", err)
-		httpserver.Err(w, http.StatusInternalServerError, fmt.Sprintf("cannot tag configuration: %s\n", err))
+		h.Err(w, http.StatusInternalServerError, fmt.Sprintf("cannot tag configuration: %s\n", err))
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -393,10 +393,10 @@ func GetTagsHandler(w http.ResponseWriter, r *http.Request) {
 	tags, err := db.getTags(key)
 	if err != nil {
 		log.Printf("cannot get tags: %s\n", err)
-		httpserver.Err(w, http.StatusInternalServerError, fmt.Sprintf("cannot get tags: %s\n", err))
+		h.Err(w, http.StatusInternalServerError, fmt.Sprintf("cannot get tags: %s\n", err))
 		return
 	}
-	httpserver.Write(w, r, tags)
+	h.Write(w, r, tags)
 }
 
 // GetAllTagsHandler
@@ -411,10 +411,10 @@ func GetAllTagsHandler(w http.ResponseWriter, r *http.Request) {
 	tags, err := db.getAllTags()
 	if err != nil {
 		log.Printf("cannot get tags: %s\n", err)
-		httpserver.Err(w, http.StatusInternalServerError, fmt.Sprintf("cannot get tags: %s\n", err))
+		h.Err(w, http.StatusInternalServerError, fmt.Sprintf("cannot get tags: %s\n", err))
 		return
 	}
-	httpserver.Write(w, r, tags)
+	h.Write(w, r, tags)
 }
 
 // GetTagValueHandler
@@ -434,7 +434,7 @@ func GetTagValueHandler(w http.ResponseWriter, r *http.Request) {
 	tags, err := db.getTags(key)
 	if err != nil {
 		log.Printf("cannot get types: %s\n", err)
-		httpserver.Err(w, http.StatusInternalServerError, fmt.Sprintf("cannot get types: %s\n", err))
+		h.Err(w, http.StatusInternalServerError, fmt.Sprintf("cannot get types: %s\n", err))
 		return
 	}
 	for _, tag := range tags {
@@ -464,7 +464,7 @@ func LinkHandler(w http.ResponseWriter, r *http.Request) {
 	err := db.Link(from, to)
 	if err != nil {
 		log.Printf("cannot link configurations: %s\n", err)
-		httpserver.Err(w, http.StatusInternalServerError, fmt.Sprintf("cannot link configurations: %s\n", err))
+		h.Err(w, http.StatusInternalServerError, fmt.Sprintf("cannot link configurations: %s\n", err))
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -488,7 +488,7 @@ func UnlinkHandler(w http.ResponseWriter, r *http.Request) {
 	err := db.unLink(from, to)
 	if err != nil {
 		log.Printf("cannot unlink configurations: %s\n", err)
-		httpserver.Err(w, http.StatusInternalServerError, fmt.Sprintf("cannot unlink configurations: %s\n", err))
+		h.Err(w, http.StatusInternalServerError, fmt.Sprintf("cannot unlink configurations: %s\n", err))
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -507,10 +507,10 @@ func GetLinksHandler(w http.ResponseWriter, r *http.Request) {
 	links, err := db.getLinks()
 	if err != nil {
 		log.Printf("cannot retireve configuration links: %s\n", err)
-		httpserver.Err(w, http.StatusInternalServerError, fmt.Sprintf("cannot retireve configuration links: %s\n", err))
+		h.Err(w, http.StatusInternalServerError, fmt.Sprintf("cannot retireve configuration links: %s\n", err))
 		return
 	}
-	httpserver.Write(w, r, links)
+	h.Write(w, r, links)
 }
 
 // DeleteLinksHandler
@@ -526,7 +526,7 @@ func DeleteLinksHandler(w http.ResponseWriter, r *http.Request) {
 	err := db.deleteLinks()
 	if err != nil {
 		log.Printf("cannot retireve configuration links: %s\n", err)
-		httpserver.Err(w, http.StatusInternalServerError, fmt.Sprintf("cannot retireve configuration links: %s\n", err))
+		h.Err(w, http.StatusInternalServerError, fmt.Sprintf("cannot retireve configuration links: %s\n", err))
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)

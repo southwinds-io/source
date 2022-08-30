@@ -10,25 +10,25 @@ package main
 
 import (
 	"fmt"
-	"github.com/gatblau/onix/oxlib/httpserver"
 	"github.com/gorilla/mux"
 	"net/http"
+	h "southwinds.dev/http"
 	"southwinds.dev/source/client"
 	"southwinds.dev/source/service"
 )
 
 func main() {
 	fmt.Printf(`
-+++++++++| ONIX CONFIG MANAGER |+++++++++
-|      ___  ___  _   _ _ __ ___ ___     |
-|     / __|/ _ \| | | | '__/ __/ _ \    |
-|     \__ \ (_) | |_| | | | (_|  __/    |
-|     |___/\___/ \__,_|_|  \___\___|    |
-|                                       |
-+++++++| configuration database |++++++++
+++++++++++++++++++++++++++++++++++++++++++
+|      ___  ___  _   _ _ __ ___ ___      |
+|     / __|/ _ \| | | | '__/ __/ _ \     |
+|     \__ \ (_) | |_| | | | (_|  __/     |
+|     |___/\___/ \__,_|_|  \___\___|     |
+|                                        |
+++++++++| configuration service |+++++++++
 %s
 `, src.Version)
-	server := httpserver.New("SOURCE")
+	server := h.New("SOURCE")
 	server.Http = func(router *mux.Router) {
 		// enables basic authentication
 		router.Use(server.AuthenticationMiddleware)
