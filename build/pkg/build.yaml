@@ -1,0 +1,46 @@
+---
+env:
+  BINARY: source
+  VERSION: 1.0.0-${ARTISAN_REF}
+
+labels:
+  app:entrypoint: src
+  app:var@OX_HTTP_USER: required,default=admin
+  app:var@OX_HTTP_PWD: required,default=adm1n
+  app:volume@SOURCE_DATA_PATH: 0
+
+functions:
+  - name: build-linux
+    description: builds the source app package
+    env:
+      GOOS: linux
+      GOARCH: amd64
+    run:
+      - rm -rf ./bin
+      - go build -ldflags="-s -w -X 'github.com/southwinds-io/source/src.Version=${VERSION}'" -o ./bin/src -v ../../
+
+  - name: build-mac
+    description: builds the source app package
+    env:
+      GOOS: darwin
+      GOARCH: amd64
+    run:
+      - rm -rf ./bin
+      - go build -ldflags="-s -w -X 'github.com/southwinds-io/source/src.Version=${VERSION}'" -o ./bin/src -v ../../
+
+profiles:
+  - name: linux
+    description: build the source application package
+    default: true
+    type: content/app
+    target: bin
+    run:
+      - $(build-linux)
+
+  - name: mac
+    description: build the source application package
+    type: content/app
+    target: bin
+    run:
+      - $(build-mac)
+...

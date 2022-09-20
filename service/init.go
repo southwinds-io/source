@@ -32,7 +32,7 @@ func init() {
 }
 
 func getPath() string {
-	dbPath := os.Getenv("SW_SRC_DATA_PATH")
+	dbPath := os.Getenv("SOURCE_DATA_PATH")
 	if len(dbPath) == 0 {
 		currentUser, err := user.Current()
 		if err != nil {

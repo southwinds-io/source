@@ -1,0 +1,30 @@
+---
+env:
+  REPO_NAME: registry.gitlab.com/southwinds-pub/image
+  VERSION: 1.0
+  BUILD: ${VERSION}-${ARTISAN_REF}
+  APP: source
+  BASE: registry.access.redhat.com/ubi8/ubi-minimal
+
+functions:
+  - name: build-linux
+    description: builds the Source Configuration Service for the linux platform
+    env:
+      GOOS: linux
+      GOARCH: amd64
+    run:
+      - rm -f src
+      - go build -ldflags="-s -w -X 'github.com/southwinds-io/source/service.Version=${BUILD}'" -o ./src -v ../../
+
+  - name: build
+    description: builds and publishes the source service image
+    run:
+      - $(build-linux)
+      - docker pull ${BASE}
+      - docker build -t ${REPO_NAME}/${APP}:${BUILD} --build-arg VERSION=${BUILD} .
+      - docker tag ${REPO_NAME}/${APP}:${BUILD} ${REPO_NAME}/${APP}:latest
+      - docker login registry.gitlab.com -u southwinds-io -p ${REGISTRY_PWD}
+      - docker push ${REPO_NAME}/${APP}:${BUILD}
+      - docker push ${REPO_NAME}/${APP}:latest
+      - rm -f src
+...

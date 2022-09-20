@@ -9,22 +9,21 @@ ARG VERSION=0.1
 
 LABEL io.soutwinds.uri="www.southwinds.io"
 LABEL io.soutwinds.author="Southwinds Tech Ltd"
-LABEL io.southwinds.maintainer="skipper@southwinds.io"
+LABEL io.southwinds.maintainer="admin@southwinds.io"
 LABEL io.southwinds.product="Source Configuration Service"
-LABEL io.southwinds.LICENSE="Apache 2"
+LABEL io.southwinds.license="https://www.apache.org/licenses/LICENSE-2.0.html"
 LABEL io.southwinds.version=$VERSION
 
 ENV UID=1000
 ENV GID=1000
-ENV SW_SRC_DATA_PATH=/data
+ENV SOURCE_DATA_PATH=/data
 
-RUN microdnf update --disablerepo=* --enablerepo=ubi-8-appstream --enablerepo=ubi-8-baseos -y && \
-    microdnf install shadow-utils.x86_64 && \
+RUN microdnf install shadow-utils.x86_64 && \
     groupadd -g $GID -o $UNAME && \
     # -M create the user with no /home
     useradd -M -u $UID -g $GID $UNAME && \
     rm -rf /var/cache/yum && \
-    mkdir ${SW_SRC_DATA_PATH} && chown -R ${UNAME} ${SW_SRC_DATA_PATH} && \
+    mkdir ${SOURCE_DATA_PATH} && chown -R ${UNAME} ${SOURCE_DATA_PATH} && \
     microdnf clean all
 
 WORKDIR /app
@@ -33,7 +32,7 @@ COPY src ./
 
 USER $UNAME
 
-VOLUME $SW_SRC_DATA_PATH
+VOLUME $SOURCE_DATA_PATH
 
 ENTRYPOINT ["sh", "-c", "/app/src"]
 
