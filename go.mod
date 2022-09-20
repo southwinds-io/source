@@ -2,7 +2,10 @@ module southwinds.dev/source
 
 go 1.19
 
-replace southwinds.dev/source/client => ./src
+replace (
+	southwinds.dev/http => ../http
+	southwinds.dev/source/client => ./src
+)
 
 require (
 	github.com/google/uuid v1.3.0
@@ -11,7 +14,7 @@ require (
 	github.com/qri-io/jsonschema v0.2.1
 	github.com/swaggo/swag v1.8.5
 	modernc.org/sqlite v1.18.1
-	southwinds.dev/http v0.0.0-20220830213454-7fd3d251e42e
+	southwinds.dev/http v0.0.0-00010101000000-000000000000
 	southwinds.dev/source/client v0.0.0-00010101000000-000000000000
 )
 
