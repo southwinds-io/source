@@ -28,7 +28,7 @@ func main() {
 ++++++++| configuration service |+++++++++
 %s
 `, src.Version)
-	server := h.New("SOURCE")
+	server := h.New("SOURCE", src.Version)
 	server.Http = func(router *mux.Router) {
 		// enables basic authentication
 		router.Use(server.AuthenticationMiddleware)

@@ -589,7 +589,3 @@ modernc.org/z v1.5.1 h1:RTNHdsrOpeoSeOF4FbzTo8gBYByaJ5xT7NgZ9ZqRiJM=
 rsc.io/binaryregexp v0.2.0/go.mod h1:qTv7/COck+e2FymRvadv62gMdZztPaShugOCi3I+8D8=
 rsc.io/quote/v3 v3.1.0/go.mod h1:yEA65RcK8LyAZtP9Kv3t0HmxON59tX3rD+tICJqUlj0=
 rsc.io/sampler v1.3.0/go.mod h1:T1hPZKmBbMNahiBKFy5HrXp6adAjACjK9JXDnKaTXpA=
-southwinds.dev/http v0.0.0-20220830192052-8a86c94d1e12 h1:Fw64qUGTTmh14jcsr6OHDS6J8SpSNpIFy5qgR48aGXA=
-southwinds.dev/http v0.0.0-20220830192052-8a86c94d1e12/go.mod h1:pcjIICDnPASvVKnMWYuIGrtvx8RS7NXusbXdTBeifuE=
-southwinds.dev/http v0.0.0-20220830213454-7fd3d251e42e h1:JczewiOhFNd2yT4M35sTm/RLI/9wPSplnV+aaJ3Y9WY=
-southwinds.dev/http v0.0.0-20220830213454-7fd3d251e42e/go.mod h1:pcjIICDnPASvVKnMWYuIGrtvx8RS7NXusbXdTBeifuE=
