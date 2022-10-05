@@ -275,6 +275,27 @@ func GetItemsByTypeHandler(w http.ResponseWriter, r *http.Request) {
 	h.Write(w, r, items)
 }
 
+// GetOldestByTypeHandler
+// @Summary Get the oldest configurations that have the specified type
+// @Description Get the oldest configurations that have the specified type
+// @Tags Items
+// @Router /item/oldest/type/{type} [get]
+// @Param type path string true "the type of the configurations to retrieve"
+// @Produce json
+// @Failure 500 {string} there was an unexpected error processing the request
+// @Success 200 {string} the request was successful
+func GetOldestByTypeHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	t := vars["type"]
+	item, err := db.getOldestByType(t)
+	if err != nil {
+		log.Printf("cannot get item of type '%s': %s\n", t, err)
+		h.Err(w, http.StatusInternalServerError, fmt.Sprintf("cannot get item of type '%s': %s\n", t, err))
+		return
+	}
+	h.Write(w, r, item)
+}
+
 // DeleteItemHandler
 // @Summary Delete a configuration item
 // @Description Delete a configuration item

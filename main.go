@@ -47,6 +47,8 @@ func main() {
 		router.HandleFunc("/item/{key}/parents", service.GetParentsHandler).Methods(http.MethodGet)
 		router.HandleFunc("/item/tag/{tags}", service.GetTaggedItemsHandler).Methods(http.MethodGet)
 		router.HandleFunc("/item/type/{type}", service.GetItemsByTypeHandler).Methods(http.MethodGet)
+		router.HandleFunc("/item/oldest/type/{type}", service.GetOldestByTypeHandler).Methods(http.MethodGet)
+
 		// tagging
 		router.HandleFunc("/item/{key}/tag/{name-value}", service.SetTagHandler).Methods(http.MethodPut)
 		router.HandleFunc("/item/{key}/tag/{name}", service.DeleteTagHandler).Methods(http.MethodDelete)

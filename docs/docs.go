@@ -46,6 +46,41 @@ const docTemplate = `{
                 }
             }
         },
+        "/item/oldest/type/{type}": {
+            "get": {
+                "description": "Get the oldest configurations that have the specified type",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Items"
+                ],
+                "summary": "Get the oldest configurations that have the specified type",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "the type of the configurations to retrieve",
+                        "name": "type",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/item/tag/{tags}": {
             "get": {
                 "description": "Get all the configurations that have the specified tags",
@@ -61,6 +96,41 @@ const docTemplate = `{
                         "type": "string",
                         "description": "a pipe separated list of tags (e.g. tag1|tag2|tag3) where tag is the tag name, not the value",
                         "name": "tags",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/item/type/{type}": {
+            "get": {
+                "description": "Get all the configurations that have the specified type",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Items"
+                ],
+                "summary": "Get all the configurations that have the specified type",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "the type of the configurations to retrieve",
+                        "name": "type",
                         "in": "path",
                         "required": true
                     }
@@ -824,7 +894,7 @@ var SwaggerInfo = &swag.Spec{
 	Host:             "",
 	BasePath:         "",
 	Schemes:          []string{},
-	Title:            "Onix Source",
+	Title:            "Source",
 	Description:      "Ultra lightweight configuration data service",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,

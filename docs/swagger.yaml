@@ -18,7 +18,7 @@ info:
     name: SouthWinds Tech Ltd
     url: https://southwinds.io/
   description: Ultra lightweight configuration data service
-  title: Onix Source
+  title: Source
   version: "1.0"
 paths:
   /item:
@@ -290,6 +290,29 @@ paths:
       summary: Get a tag value
       tags:
       - Tagging
+  /item/oldest/type/{type}:
+    get:
+      description: Get the oldest configurations that have the specified type
+      parameters:
+      - description: the type of the configurations to retrieve
+        in: path
+        name: type
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Get the oldest configurations that have the specified type
+      tags:
+      - Items
   /item/tag/{tags}:
     get:
       description: Get all the configurations that have the specified tags
@@ -312,6 +335,29 @@ paths:
           schema:
             type: string
       summary: Get all the configurations that have the specified tags
+      tags:
+      - Items
+  /item/type/{type}:
+    get:
+      description: Get all the configurations that have the specified type
+      parameters:
+      - description: the type of the configurations to retrieve
+        in: path
+        name: type
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Get all the configurations that have the specified type
       tags:
       - Items
   /link:

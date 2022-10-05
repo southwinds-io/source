@@ -2,7 +2,7 @@
     "swagger": "2.0",
     "info": {
         "description": "Ultra lightweight configuration data service",
-        "title": "Onix Source",
+        "title": "Source",
         "contact": {
             "name": "SouthWinds Tech Ltd",
             "url": "https://southwinds.io/",
@@ -37,6 +37,41 @@
                 }
             }
         },
+        "/item/oldest/type/{type}": {
+            "get": {
+                "description": "Get the oldest configurations that have the specified type",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Items"
+                ],
+                "summary": "Get the oldest configurations that have the specified type",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "the type of the configurations to retrieve",
+                        "name": "type",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
         "/item/tag/{tags}": {
             "get": {
                 "description": "Get all the configurations that have the specified tags",
@@ -52,6 +87,41 @@
                         "type": "string",
                         "description": "a pipe separated list of tags (e.g. tag1|tag2|tag3) where tag is the tag name, not the value",
                         "name": "tags",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/item/type/{type}": {
+            "get": {
+                "description": "Get all the configurations that have the specified type",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Items"
+                ],
+                "summary": "Get all the configurations that have the specified type",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "the type of the configurations to retrieve",
+                        "name": "type",
                         "in": "path",
                         "required": true
                     }

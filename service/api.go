@@ -582,6 +582,33 @@ func (d *DataBase) setItemString(key, iType, value string) (error, bool) {
 	return err, false
 }
 
+func (d *DataBase) getOldestByType(itemType string) (*src.I, error) {
+	row := d.db.QueryRow(`SELECT i.key, i.type, i.value, i.updated FROM item i WHERE i.type = ? ORDER BY updated ASC LIMIT 1;`, itemType)
+	var (
+		key     string
+		iType   string
+		value   []byte
+		updated sql.NullInt64
+	)
+	err := row.Scan(&key, &iType, &value, &updated)
+	if err != nil {
+		if strings.Contains(err.Error(), "no rows") {
+			return nil, ErrNotFound
+		}
+		return nil, err
+	}
+	vv, decErr := decrypt(value)
+	if decErr != nil {
+		return nil, err
+	}
+	return &src.I{
+		Key:     key,
+		Type:    iType,
+		Value:   vv,
+		Updated: time.Unix(0, updated.Int64).UTC(),
+	}, nil
+}
+
 func getDb(path string) (db *sql.DB, err error) {
 	path, err = filepath.Abs(path)
 	path = filepath.Join(path, ".cfg.db")
