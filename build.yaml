@@ -1,16 +1,9 @@
 ---
 env:
-  REPO_NAME: registry.gitlab.com/southwinds-pub/image
-  VERSION: 1.0
-  BUILD: ${VERSION}-${ARTISAN_REF}
-  APP: source
+  APP_RUN: quay.io/artisan/app-run:ubi-minimal
+  APP_PKG: artr.gdn/app/source:latest
 
 functions:
-  - name: build-image
-    description: build & publish source container image
-    run:
-      - art run build build/image
-
   - name: swagen
     description: generates/refreshes the OpenAPI specifications for Source's HTTP API
     run:
@@ -20,10 +13,10 @@ functions:
     description: starts a source container locally as a docker service on port 8999
     env:
       OX_HTTP_USER: admin
-      OX_HTTP_PWD: admin
+      OX_HTTP_PWD: adm1n
     run:
       - docker rm -f src > /dev/null
-      - docker run --name src --restart=always -d -p 8999:8080 -e OX_HTTP_USER=${OX_HTTP_USER} -e OX_HTTP_PWD=${OX_HTTP_PWD} ${REPO_NAME}/${APP}
+      - docker run --name src --restart=always -d -p 8999:8080 -e ART_PACKAGE_NAME=${APP_PKG} -e OX_HTTP_USER=${OX_HTTP_USER} -e OX_HTTP_PWD=${OX_HTTP_PWD} ${APP_RUN}
       - python -mwebbrowser http://localhost:8999/api/
 
   - name: dispose

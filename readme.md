@@ -18,11 +18,16 @@ It uses Sqlite as a backend and allows to:
 
 ```bash
 # start service in a docker container
-docker run --name src --restart=always -d \
-       -p 8999:8080 \
-       -e OX_HTTP_USER="USER-NAME-HERE" \
-       -e OX_HTTP_PWD="USER-PASSWORD-HERE" \
-       registry.gitlab.com/southwinds/images/source
+docker run \
+   --name src \
+   --restart=always \
+   -d \
+   -p 8999:8080 \
+   -e ART_PACKAGE_NAME="app/source" \
+   -e OX_HTTP_USER="USER-NAME-HERE" \
+   -e OX_HTTP_PWD="USER-PASSWORD-HERE" \
+   -e SOURCE_DATA_PATH="volume_0" \
+   quay.io/artisan/app-run:ubi-minimal
        
 # launch Open API in a browser
 python -mwebbrowser http://localhost:8999/api/

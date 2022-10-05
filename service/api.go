@@ -224,6 +224,44 @@ func (d *DataBase) getItem(key string) (*src.I, error) {
 	}, nil
 }
 
+// getItemsByType get the  items with the specified type
+func (d *DataBase) getItemsByType(t string) ([]src.I, error) {
+	stmt := "SELECT DISTINCT i.key, i.type, i.value, i.updated FROM item i WHERE i.type=?"
+	row, err := d.db.Query(stmt, t)
+	if err != nil {
+		return nil, err
+	}
+	defer func(row *sql.Rows) {
+		err = row.Close()
+		if err != nil {
+			fmt.Printf("cannot close query row: %s\n", err)
+		}
+	}(row)
+	var (
+		key, iType string
+		value      []byte
+		updated    sql.NullInt64
+	)
+	var items []src.I
+	for row.Next() {
+		err = row.Scan(&key, &iType, &value, &updated)
+		if err != nil {
+			return nil, err
+		}
+		vv, decErr := decrypt(value)
+		if decErr != nil {
+			return nil, err
+		}
+		items = append(items, src.I{
+			Key:     key,
+			Type:    iType,
+			Value:   vv,
+			Updated: time.Unix(0, updated.Int64).UTC(),
+		})
+	}
+	return items, nil
+}
+
 // getTaggedItems get the items with the specified tag names
 func (d *DataBase) getTaggedItems(tags ...string) ([]src.I, error) {
 	stmt := "SELECT DISTINCT i.key, i.type, i.value, i.updated FROM item i INNER JOIN tag t ON i.key = t.item_key WHERE t.name" + toInSqlTags(tags)

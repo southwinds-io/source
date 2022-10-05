@@ -17,8 +17,11 @@ import (
 	"github.com/invopop/jsonschema"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 )
+
+var UserAgent = fmt.Sprintf("SW-SOURCE-CLIENT-%s", Version)
 
 type ClientOptions struct {
 	InsecureSkipVerify bool
@@ -83,7 +86,7 @@ func (c *Client) SetType(key string, obj any) error {
 		return err
 	}
 	request.Header.Set("Authorization", c.token)
-	request.Header.Set("User-Agent", fmt.Sprintf("SW-SOURCE-CLIENT-%s", Version))
+	request.Header.Set("User-Agent", UserAgent)
 	resp, reqErr := c.Do(request)
 	if reqErr != nil {
 		return reqErr
@@ -99,6 +102,12 @@ func (c *Client) Save(key, itemType string, item any) error {
 	if len(itemType) == 0 {
 		return fmt.Errorf("item type is required to validate the item data")
 	}
+	// if the key contains a wildcard
+	if strings.Contains(key, "?") {
+		// generates sequence
+		now := time.Now().UTC().Format("20060102150405.000")
+		key = strings.Replace(key, "?", now, 1)
+	}
 	objBytes, err := json.Marshal(item)
 	if err != nil {
 		return err
@@ -108,7 +117,7 @@ func (c *Client) Save(key, itemType string, item any) error {
 		return err
 	}
 	request.Header.Set("Authorization", c.token)
-	request.Header.Set("User-Agent", fmt.Sprintf("SW-SOURCE-CLIENT-%s", Version))
+	request.Header.Set("User-Agent", UserAgent)
 	if len(itemType) > 0 {
 		request.Header.Set("Source-Type", itemType)
 	}
@@ -129,7 +138,7 @@ func (c *Client) LoadRaw(itemKey string) (*I, error) {
 		return nil, err
 	}
 	request.Header.Set("Authorization", c.token)
-	request.Header.Set("User-Agent", fmt.Sprintf("SW-SOURCE-CLIENT-%s", Version))
+	request.Header.Set("User-Agent", UserAgent)
 	resp, reqErr := c.Do(request)
 	if reqErr != nil {
 		return nil, reqErr
@@ -159,13 +168,81 @@ func (c *Client) Load(itemKey string, prototype any) (any, error) {
 	return i.Typed(prototype)
 }
 
+func (c *Client) LoadItemsByTagRaw(tags ...string) (IL, error) {
+	request, err := http.NewRequest(http.MethodGet, c.url("/item/tag/%s", strings.Join(tags, "|")), nil)
+	if err != nil {
+		return nil, err
+	}
+	request.Header.Set("Authorization", c.token)
+	request.Header.Set("User-Agent", UserAgent)
+	resp, reqErr := c.Do(request)
+	if reqErr != nil {
+		return nil, reqErr
+	}
+	if resp.StatusCode > 299 {
+		return nil, fmt.Errorf("cannot get tagged items, source server responded with: %s", resp.Status)
+	}
+	body, readErr := io.ReadAll(resp.Body)
+	if readErr != nil {
+		return nil, fmt.Errorf("cannot read response body: %s", readErr)
+	}
+	var items IL
+	err = json.Unmarshal(body, &items)
+	if err != nil {
+		return nil, fmt.Errorf("cannot unmarshal response body: %s", err)
+	}
+	return items, nil
+}
+
+func (c *Client) LoadItemsByTag(factory func() any, tags ...string) ([]any, error) {
+	items, err := c.LoadItemsByTagRaw(tags...)
+	if err != nil {
+		return nil, err
+	}
+	return items.Typed(factory)
+}
+
+func (c *Client) LoadItemsByTypeRaw(itemType string) (IL, error) {
+	request, err := http.NewRequest(http.MethodGet, c.url("/item/type/%s", itemType), nil)
+	if err != nil {
+		return nil, err
+	}
+	request.Header.Set("Authorization", c.token)
+	request.Header.Set("User-Agent", UserAgent)
+	resp, reqErr := c.Do(request)
+	if reqErr != nil {
+		return nil, reqErr
+	}
+	if resp.StatusCode > 299 {
+		return nil, fmt.Errorf("cannot get item for type '%s', source server responded with: %s", itemType, resp.Status)
+	}
+	body, readErr := io.ReadAll(resp.Body)
+	if readErr != nil {
+		return nil, fmt.Errorf("cannot read response body: %s", readErr)
+	}
+	var items IL
+	err = json.Unmarshal(body, &items)
+	if err != nil {
+		return nil, fmt.Errorf("cannot unmarshal response body: %s", err)
+	}
+	return items, nil
+}
+
+func (c *Client) LoadItemsByType(factory func() any, itemType string) ([]any, error) {
+	items, err := c.LoadItemsByTypeRaw(itemType)
+	if err != nil {
+		return nil, err
+	}
+	return items.Typed(factory)
+}
+
 func (c *Client) LoadChildrenRaw(itemKey string) (IL, error) {
 	request, err := http.NewRequest(http.MethodGet, c.url("/item/%s/children", itemKey), nil)
 	if err != nil {
 		return nil, err
 	}
 	request.Header.Set("Authorization", c.token)
-	request.Header.Set("User-Agent", fmt.Sprintf("SW-SOURCE-CLIENT-%s", Version))
+	request.Header.Set("User-Agent", UserAgent)
 	resp, reqErr := c.Do(request)
 	if reqErr != nil {
 		return nil, reqErr
@@ -185,15 +262,12 @@ func (c *Client) LoadChildrenRaw(itemKey string) (IL, error) {
 	return items, nil
 }
 
-func (c *Client) LoadChildren(itemKey string, item any) ([]any, error) {
+func (c *Client) LoadChildren(factory func() any, itemKey string) ([]any, error) {
 	items, err := c.LoadChildrenRaw(itemKey)
 	if err != nil {
 		return nil, err
 	}
-	return items.Typed(func() any {
-		instance := item
-		return instance
-	})
+	return items.Typed(factory)
 }
 
 func (c *Client) LoadParentsRaw(itemKey string) (IL, error) {
@@ -202,7 +276,7 @@ func (c *Client) LoadParentsRaw(itemKey string) (IL, error) {
 		return nil, err
 	}
 	request.Header.Set("Authorization", c.token)
-	request.Header.Set("User-Agent", fmt.Sprintf("SW-SOURCE-CLIENT-%s", Version))
+	request.Header.Set("User-Agent", UserAgent)
 	resp, reqErr := c.Do(request)
 	if reqErr != nil {
 		return nil, reqErr
@@ -222,15 +296,12 @@ func (c *Client) LoadParentsRaw(itemKey string) (IL, error) {
 	return items, nil
 }
 
-func (c *Client) LoadParents(itemKey string, item any) ([]any, error) {
+func (c *Client) LoadParents(factory func() any, itemKey string) ([]any, error) {
 	items, err := c.LoadParentsRaw(itemKey)
 	if err != nil {
 		return nil, err
 	}
-	return items.Typed(func() any {
-		instance := item
-		return instance
-	})
+	return items.Typed(factory)
 }
 
 func (c *Client) Tag(itemKey, tagName, tagValue string) error {
@@ -249,7 +320,7 @@ func (c *Client) Tag(itemKey, tagName, tagValue string) error {
 		return err
 	}
 	request.Header.Set("Authorization", c.token)
-	request.Header.Set("User-Agent", fmt.Sprintf("SW-SOURCE-CLIENT-%s", Version))
+	request.Header.Set("User-Agent", UserAgent)
 	resp, reqErr := c.Do(request)
 	if reqErr != nil {
 		return reqErr
@@ -269,7 +340,7 @@ func (c *Client) Untag(itemKey, tagName string) error {
 		return err
 	}
 	request.Header.Set("Authorization", c.token)
-	request.Header.Set("User-Agent", fmt.Sprintf("SW-SOURCE-CLIENT-%s", Version))
+	request.Header.Set("User-Agent", UserAgent)
 	resp, reqErr := c.Do(request)
 	if reqErr != nil {
 		return reqErr
@@ -286,7 +357,7 @@ func (c *Client) Link(fromKey, toKey string) error {
 		return err
 	}
 	request.Header.Set("Authorization", c.token)
-	request.Header.Set("User-Agent", fmt.Sprintf("SW-SOURCE-CLIENT-%s", Version))
+	request.Header.Set("User-Agent", UserAgent)
 	resp, reqErr := c.Do(request)
 	if reqErr != nil {
 		return reqErr
@@ -303,7 +374,7 @@ func (c *Client) Unlink(fromKey, toKey string) error {
 		return err
 	}
 	request.Header.Set("Authorization", c.token)
-	request.Header.Set("User-Agent", fmt.Sprintf("SW-SOURCE-CLIENT-%s", Version))
+	request.Header.Set("User-Agent", UserAgent)
 	resp, reqErr := c.Do(request)
 	if reqErr != nil {
 		return reqErr

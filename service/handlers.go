@@ -22,7 +22,7 @@ import (
 	"strings"
 )
 
-// @title Onix Source
+// @title Source
 // @version 1.0
 // @description Ultra lightweight configuration data service
 // @contact.name SouthWinds Tech Ltd
@@ -249,6 +249,27 @@ func GetTaggedItemsHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Printf("cannot get tagged items: %s\n", err)
 		h.Err(w, http.StatusInternalServerError, fmt.Sprintf("cannot get tagged items: %s\n", err))
+		return
+	}
+	h.Write(w, r, items)
+}
+
+// GetItemsByTypeHandler
+// @Summary Get all the configurations that have the specified type
+// @Description Get all the configurations that have the specified type
+// @Tags Items
+// @Router /item/type/{type} [get]
+// @Param type path string true "the type of the configurations to retrieve"
+// @Produce json
+// @Failure 500 {string} there was an unexpected error processing the request
+// @Success 200 {string} the request was successful
+func GetItemsByTypeHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	t := vars["type"]
+	items, err := db.getItemsByType(t)
+	if err != nil {
+		log.Printf("cannot get items of type '%s': %s\n", t, err)
+		h.Err(w, http.StatusInternalServerError, fmt.Sprintf("cannot get items of type '%s': %s\n", t, err))
 		return
 	}
 	h.Write(w, r, items)
