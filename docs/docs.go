@@ -46,20 +46,20 @@ const docTemplate = `{
                 }
             }
         },
-        "/item/oldest/type/{type}": {
-            "get": {
-                "description": "Get the oldest configurations that have the specified type",
+        "/item/pop/newest/{type}": {
+            "delete": {
+                "description": "Get the newest configuration that have the specified type and remove it from the database effectively acting as a LIFO queue",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Items"
                 ],
-                "summary": "Get the oldest configurations that have the specified type",
+                "summary": "Get the newest configuration that have the specified type and remove it from the database effectively acting as a LIFO queue",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "the type of the configurations to retrieve",
+                        "description": "the type of the configuration to pop",
                         "name": "type",
                         "in": "path",
                         "required": true
@@ -68,6 +68,53 @@ const docTemplate = `{
                 "responses": {
                     "200": {
                         "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "/item/pop/oldest/{type}": {
+            "delete": {
+                "description": "Get the oldest configuration that have the specified type and remove it from the database effectively acting as a FIFO queue",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Items"
+                ],
+                "summary": "Get the oldest configuration that have the specified type and remove it from the database effectively acting as a FIFO queue",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "the type of the configuration to pop",
+                        "name": "type",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
                         "schema": {
                             "type": "string"
                         }

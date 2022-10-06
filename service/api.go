@@ -21,10 +21,11 @@ import (
 	"github.com/invopop/jsonschema"
 	schemaValidation "github.com/qri-io/jsonschema"
 	"io"
+	"log"
 	_ "modernc.org/sqlite"
 	"os"
 	"path/filepath"
-	"southwinds.dev/source/client"
+	"southwinds.dev/source_client"
 	"strings"
 	"time"
 )
@@ -582,21 +583,72 @@ func (d *DataBase) setItemString(key, iType, value string) (error, bool) {
 	return err, false
 }
 
-func (d *DataBase) getOldestByType(itemType string) (*src.I, error) {
-	row := d.db.QueryRow(`SELECT i.key, i.type, i.value, i.updated FROM item i WHERE i.type = ? ORDER BY updated ASC LIMIT 1;`, itemType)
+func (d *DataBase) popOldestByType(itemType string) (*src.I, error) {
+	ctx := context.Background()
+	tx, err := d.db.BeginTx(ctx, nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+	row := tx.QueryRow(`SELECT i.key, i.type, i.value, i.updated FROM item i WHERE i.type = ? ORDER BY updated ASC LIMIT 1;`, itemType)
 	var (
 		key     string
 		iType   string
 		value   []byte
 		updated sql.NullInt64
 	)
-	err := row.Scan(&key, &iType, &value, &updated)
+	err = row.Scan(&key, &iType, &value, &updated)
 	if err != nil {
+		_ = tx.Rollback()
 		if strings.Contains(err.Error(), "no rows") {
-			return nil, ErrNotFound
+			return nil, nil
 		}
 		return nil, err
 	}
+	_, err = tx.ExecContext(ctx, "DELETE FROM item WHERE item.key = ?", key)
+	if err != nil {
+		_ = tx.Rollback()
+		return nil, fmt.Errorf("cannot delete item %s: %s", key, err.Error())
+	}
+	err = tx.Commit()
+	vv, decErr := decrypt(value)
+	if decErr != nil {
+		return nil, err
+	}
+	return &src.I{
+		Key:     key,
+		Type:    iType,
+		Value:   vv,
+		Updated: time.Unix(0, updated.Int64).UTC(),
+	}, nil
+}
+
+func (d *DataBase) popNewestByType(itemType string) (*src.I, error) {
+	ctx := context.Background()
+	tx, err := d.db.BeginTx(ctx, nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+	row := tx.QueryRow(`SELECT i.key, i.type, i.value, i.updated FROM item i WHERE i.type = ? ORDER BY updated DESC LIMIT 1;`, itemType)
+	var (
+		key     string
+		iType   string
+		value   []byte
+		updated sql.NullInt64
+	)
+	err = row.Scan(&key, &iType, &value, &updated)
+	if err != nil {
+		_ = tx.Rollback()
+		if strings.Contains(err.Error(), "no rows") {
+			return nil, nil
+		}
+		return nil, err
+	}
+	_, err = tx.ExecContext(ctx, "DELETE FROM item WHERE item.key = ?", key)
+	if err != nil {
+		_ = tx.Rollback()
+		return nil, fmt.Errorf("cannot delete item %s: %s", key, err.Error())
+	}
+	err = tx.Commit()
 	vv, decErr := decrypt(value)
 	if decErr != nil {
 		return nil, err

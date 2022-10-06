@@ -17,8 +17,8 @@ import (
 	"log"
 	"net/http"
 	h "southwinds.dev/http"
-	"southwinds.dev/source/client"
 	_ "southwinds.dev/source/docs"
+	"southwinds.dev/source_client"
 	"strings"
 )
 
@@ -275,22 +275,53 @@ func GetItemsByTypeHandler(w http.ResponseWriter, r *http.Request) {
 	h.Write(w, r, items)
 }
 
-// GetOldestByTypeHandler
-// @Summary Get the oldest configurations that have the specified type
-// @Description Get the oldest configurations that have the specified type
+// PopOldestByTypeHandler
+// @Summary Get the oldest configuration that have the specified type and remove it from the database effectively acting as a FIFO queue
+// @Description Get the oldest configuration that have the specified type and remove it from the database effectively acting as a FIFO queue
 // @Tags Items
-// @Router /item/oldest/type/{type} [get]
-// @Param type path string true "the type of the configurations to retrieve"
+// @Router /item/pop/oldest/{type} [delete]
+// @Param type path string true "the type of the configuration to pop"
 // @Produce json
 // @Failure 500 {string} there was an unexpected error processing the request
+// @Failure 404 {string} there was no item to pop
 // @Success 200 {string} the request was successful
-func GetOldestByTypeHandler(w http.ResponseWriter, r *http.Request) {
+func PopOldestByTypeHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	t := vars["type"]
-	item, err := db.getOldestByType(t)
+	item, err := db.popOldestByType(t)
 	if err != nil {
 		log.Printf("cannot get item of type '%s': %s\n", t, err)
 		h.Err(w, http.StatusInternalServerError, fmt.Sprintf("cannot get item of type '%s': %s\n", t, err))
+		return
+	}
+	if item == nil {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
+	h.Write(w, r, item)
+}
+
+// PopNewestByTypeHandler
+// @Summary Get the newest configuration that have the specified type and remove it from the database effectively acting as a LIFO queue
+// @Description Get the newest configuration that have the specified type and remove it from the database effectively acting as a LIFO queue
+// @Tags Items
+// @Router /item/pop/newest/{type} [delete]
+// @Param type path string true "the type of the configuration to pop"
+// @Produce json
+// @Failure 500 {string} there was an unexpected error processing the request
+// @Failure 404 {string} there was no item to pop
+// @Success 200 {string} the request was successful
+func PopNewestByTypeHandler(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	t := vars["type"]
+	item, err := db.popNewestByType(t)
+	if err != nil {
+		log.Printf("cannot get item of type '%s': %s\n", t, err)
+		h.Err(w, http.StatusInternalServerError, fmt.Sprintf("cannot get item of type '%s': %s\n", t, err))
+		return
+	}
+	if item == nil {
+		w.WriteHeader(http.StatusNotFound)
 		return
 	}
 	h.Write(w, r, item)

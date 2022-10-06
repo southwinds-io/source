@@ -5,8 +5,9 @@ env:
 
 labels:
   app:entrypoint: src
-  app:var@OX_HTTP_USER: required,default=admin
-  app:var@OX_HTTP_PWD: required,default=adm1n
+  app:var@HTTP_USER: required,default=admin
+  app:var@HTTP_PWD: required,default=adm1n
+  app:var@HTTP_PORT: optional,default=8080
   app:volume@SOURCE_DATA_PATH: 0
 
 functions:
@@ -17,7 +18,7 @@ functions:
       GOARCH: amd64
     run:
       - rm -rf ./bin
-      - go build -ldflags="-s -w -X 'github.com/southwinds-io/source/src.Version=${VERSION}'" -o ./bin/src -v ../../
+      - go build -ldflags="-s -w -X 'southwinds.dev/source/service.Version=${VERSION}'" -o ./bin/src -v ../../
 
   - name: build-mac
     description: builds the source app package
@@ -26,7 +27,7 @@ functions:
       GOARCH: amd64
     run:
       - rm -rf ./bin
-      - go build -ldflags="-s -w -X 'github.com/southwinds-io/source/src.Version=${VERSION}'" -o ./bin/src -v ../../
+      - go build -ldflags="-s -w -X 'southwinds.dev/source/service.Version=${VERSION}'" -o ./bin/src -v ../../
 
 profiles:
   - name: linux

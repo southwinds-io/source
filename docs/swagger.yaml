@@ -290,11 +290,12 @@ paths:
       summary: Get a tag value
       tags:
       - Tagging
-  /item/oldest/type/{type}:
-    get:
-      description: Get the oldest configurations that have the specified type
+  /item/pop/newest/{type}:
+    delete:
+      description: Get the newest configuration that have the specified type and remove
+        it from the database effectively acting as a LIFO queue
       parameters:
-      - description: the type of the configurations to retrieve
+      - description: the type of the configuration to pop
         in: path
         name: type
         required: true
@@ -306,11 +307,45 @@ paths:
           description: OK
           schema:
             type: string
+        "404":
+          description: Not Found
+          schema:
+            type: string
         "500":
           description: Internal Server Error
           schema:
             type: string
-      summary: Get the oldest configurations that have the specified type
+      summary: Get the newest configuration that have the specified type and remove
+        it from the database effectively acting as a LIFO queue
+      tags:
+      - Items
+  /item/pop/oldest/{type}:
+    delete:
+      description: Get the oldest configuration that have the specified type and remove
+        it from the database effectively acting as a FIFO queue
+      parameters:
+      - description: the type of the configuration to pop
+        in: path
+        name: type
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "404":
+          description: Not Found
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: Get the oldest configuration that have the specified type and remove
+        it from the database effectively acting as a FIFO queue
       tags:
       - Items
   /item/tag/{tags}:

@@ -4,7 +4,7 @@ go 1.19
 
 replace (
 	southwinds.dev/http => ../http
-	southwinds.dev/source/client => ./src
+	southwinds.dev/source_client => ../source_client
 )
 
 require (
@@ -15,7 +15,7 @@ require (
 	github.com/swaggo/swag v1.8.5
 	modernc.org/sqlite v1.18.1
 	southwinds.dev/http v0.0.0-00010101000000-000000000000
-	southwinds.dev/source/client v0.0.0-00010101000000-000000000000
+	southwinds.dev/source_client v0.0.0-00010101000000-000000000000
 )
 
 require (

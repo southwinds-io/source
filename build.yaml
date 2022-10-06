@@ -7,7 +7,7 @@ functions:
   - name: swagen
     description: generates/refreshes the OpenAPI specifications for Source's HTTP API
     run:
-      - swag init -d "service,./src" -g handlers.go
+      - swag init -d "service,../source_client" -g handlers.go
 
   - name: deploy
     description: starts a source container locally as a docker service on port 8999

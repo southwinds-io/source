@@ -13,7 +13,6 @@ import (
 	"github.com/gorilla/mux"
 	"net/http"
 	h "southwinds.dev/http"
-	"southwinds.dev/source/client"
 	"southwinds.dev/source/service"
 )
 
@@ -27,8 +26,8 @@ func main() {
 |                                        |
 ++++++++| configuration service |+++++++++
 %s
-`, src.Version)
-	server := h.New("SOURCE", src.Version)
+`, service.Version)
+	server := h.New("SOURCE", service.Version)
 	server.Http = func(router *mux.Router) {
 		// enables basic authentication
 		router.Use(server.AuthenticationMiddleware)
@@ -47,7 +46,8 @@ func main() {
 		router.HandleFunc("/item/{key}/parents", service.GetParentsHandler).Methods(http.MethodGet)
 		router.HandleFunc("/item/tag/{tags}", service.GetTaggedItemsHandler).Methods(http.MethodGet)
 		router.HandleFunc("/item/type/{type}", service.GetItemsByTypeHandler).Methods(http.MethodGet)
-		router.HandleFunc("/item/oldest/type/{type}", service.GetOldestByTypeHandler).Methods(http.MethodGet)
+		router.HandleFunc("/item/pop/oldest/{type}", service.PopOldestByTypeHandler).Methods(http.MethodDelete)
+		router.HandleFunc("/item/pop/newest/{type}", service.PopNewestByTypeHandler).Methods(http.MethodDelete)
 
 		// tagging
 		router.HandleFunc("/item/{key}/tag/{name-value}", service.SetTagHandler).Methods(http.MethodPut)
