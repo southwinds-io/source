@@ -1,4 +1,4 @@
-module southwinds.dev/source/client
+module southwinds.dev/source/src
 
 go 1.19
 
