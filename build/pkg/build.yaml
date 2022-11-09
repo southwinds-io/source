@@ -6,7 +6,7 @@ env:
 labels:
   app:entrypoint: src
   app:var@HTTP_USER: required,default=admin
-  app:var@HTTP_PWD: required,default=adm1n
+  app:var@HTTP_PASSWORD: required,default=adm1n
   app:var@HTTP_PORT: optional,default=8080
   app:volume@SOURCE_DATA_PATH: 0
 

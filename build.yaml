@@ -1,6 +1,6 @@
 ---
 env:
-  APP_RUN: quay.io/artisan/app-run:ubi-minimal
+  APP_RUN: quay.io/artisan/app-run:rhel-comm
   APP_PKG: artr.gdn/app/source:latest
 
 functions:
