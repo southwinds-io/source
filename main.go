@@ -11,12 +11,14 @@ package main
 import (
 	"fmt"
 	"github.com/gorilla/mux"
+	"github.com/joho/godotenv"
 	"net/http"
 	h "southwinds.dev/http"
 	"southwinds.dev/source/service"
 )
 
 func main() {
+	godotenv.Load("src.env")
 	fmt.Printf(`
 ++++++++++++++++++++++++++++++++++++++++++
 |      ___  ___  _   _ _ __ ___ ___      |

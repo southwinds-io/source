@@ -174,12 +174,16 @@ func SetItemHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	err, isValidationError := db.SetItem(key, itemType, string(body[:]))
 	if err != nil {
-		if err == ErrInvalidItemType || isValidationError {
-			log.Printf("cannot set item: %s\n", err)
-			h.Err(w, http.StatusBadRequest, fmt.Sprintf("cannot set item: %s\n", err))
+		if err == ErrItemTypeNotFound {
+			log.Printf("cannot set item '%s': %s\n", key, err)
+			h.Err(w, http.StatusBadRequest, fmt.Sprintf("item type %s is not defined for item %s\n", itemType, key))
+			return
+		} else if isValidationError {
+			log.Printf("cannot set item '%s': %s\n", key, err)
+			h.Err(w, http.StatusBadRequest, fmt.Sprintf("cannot set item '%s' due to a schema validation error: %s\n", key, err))
 			return
 		}
-		log.Printf("cannot set item: %s\n", err)
+		log.Printf("cannot set item '%s': %s\n", key, err)
 		h.Err(w, http.StatusInternalServerError, fmt.Sprintf("cannot set item: %s\n", err))
 		return
 	}

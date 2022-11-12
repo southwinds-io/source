@@ -35,9 +35,9 @@ const (
 )
 
 var (
-	ErrNotFound         = errors.New("noy found")
-	ErrInvalidItemType  = errors.New("invalid item type")
+	ErrNotFound         = errors.New("item not found")
 	ErrInvalidItemValue = errors.New("invalid item value, schema verification failed")
+	ErrItemTypeNotFound = errors.New("item type not found")
 )
 
 // DataBase the definition of the configuration database
@@ -99,14 +99,27 @@ func (d *DataBase) SetItem(key, iType string, value interface{}) (error, bool) {
 	if value == nil {
 		return fmt.Errorf("value not provided"), false
 	}
+	var typeInfo *src.TT
+	var err error
+	if len(iType) > 0 {
+		// get the schema for the type
+		typeInfo, err = d.getTypeInfo(iType)
+		if err != nil {
+			if err == ErrItemTypeNotFound {
+				return err, false
+			} else {
+				return fmt.Errorf("error retrieving type definition for %s: %s", key, err), false
+			}
+		}
+	}
 	if sv, ok := value.(string); ok {
-		return d.setItemString(key, iType, sv)
+		return d.setItemString(key, sv, typeInfo)
 	}
 	valueBytes, err := json.Marshal(value)
 	if err != nil {
 		return err, false
 	}
-	return d.setItemString(key, iType, string(valueBytes[:]))
+	return d.setItemString(key, string(valueBytes[:]), typeInfo)
 }
 
 // DeleteItem delete the specified item
@@ -538,36 +551,29 @@ func (d *DataBase) getTypeInfo(key string) (*src.TT, error) {
 	err := row.Scan(&schema, &proto)
 	if err != nil {
 		if strings.Contains(err.Error(), "no rows") {
-			return nil, ErrNotFound
+			return nil, ErrItemTypeNotFound
 		}
 		return nil, err
 	}
-	return &src.TT{Schema: schema, Proto: proto}, nil
+	return &src.TT{Key: key, Schema: schema, Proto: proto}, nil
 }
 
-func (d *DataBase) setItemString(key, iType, value string) (error, bool) {
-	// get the schema for the type
-	typeInfo, err := d.getTypeInfo(iType)
-	if err != nil {
-		return err, false
-	}
-	// validates only if a schema has been defined
-	if typeInfo == nil {
-		return ErrInvalidItemType, false
-	}
-
-	ctx := context.Background()
-	rs := &schemaValidation.Schema{}
-	if err = json.Unmarshal(typeInfo.Schema, rs); err != nil {
-		return fmt.Errorf("unmarshal schema: %s", err), false
-	}
-	// validate the value using the stored schema
-	errs, err := rs.ValidateBytes(ctx, []byte(value))
-	if err != nil {
-		return err, true
-	}
-	if len(errs) > 0 {
-		return errs[0], true
+func (d *DataBase) setItemString(key, value string, iType *src.TT) (error, bool) {
+	// only performs validation if a type is specified
+	if iType != nil {
+		ctx := context.Background()
+		rs := &schemaValidation.Schema{}
+		if err := json.Unmarshal(iType.Schema, rs); err != nil {
+			return fmt.Errorf("unmarshal schema: %s", err), false
+		}
+		// validate the value using the stored schema
+		errs, err := rs.ValidateBytes(ctx, []byte(value))
+		if err != nil {
+			return err, true
+		}
+		if len(errs) > 0 {
+			return errs[0], true
+		}
 	}
 
 	stmt := `INSERT INTO item(key, type, value, updated) VALUES(?, ?, ?, ?) ON CONFLICT(key) DO UPDATE SET type = excluded.type, value = excluded.value, updated = excluded.updated;`
@@ -579,7 +585,7 @@ func (d *DataBase) setItemString(key, iType, value string) (error, bool) {
 	if encErr != nil {
 		return err, false
 	}
-	_, err = statement.Exec(key, iType, vv, time.Now().UTC().UnixNano())
+	_, err = statement.Exec(key, iType.Key, vv, time.Now().UTC().UnixNano())
 	return err, false
 }
 

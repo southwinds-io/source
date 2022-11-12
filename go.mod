@@ -11,6 +11,7 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/mux v1.8.0
 	github.com/invopop/jsonschema v0.6.0
+	github.com/joho/godotenv v1.4.0
 	github.com/qri-io/jsonschema v0.2.1
 	github.com/swaggo/swag v1.8.5
 	modernc.org/sqlite v1.18.1
