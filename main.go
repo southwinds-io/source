@@ -43,7 +43,7 @@ func main() {
 		router.HandleFunc("/item/{key}", service.SetItemHandler).Methods(http.MethodPut)
 		router.HandleFunc("/item/{key}", service.GetItemHandler).Methods(http.MethodGet)
 		router.HandleFunc("/item", service.GetItemsHandler).Methods(http.MethodGet)
-		router.HandleFunc("/item", service.DeleteItemHandler).Methods(http.MethodDelete)
+		router.HandleFunc("/item/{key}", service.DeleteItemHandler).Methods(http.MethodDelete)
 		router.HandleFunc("/item/{key}/children", service.GetChildrenHandler).Methods(http.MethodGet)
 		router.HandleFunc("/item/{key}/parents", service.GetParentsHandler).Methods(http.MethodGet)
 		router.HandleFunc("/item/tag/{tags}", service.GetTaggedItemsHandler).Methods(http.MethodGet)
