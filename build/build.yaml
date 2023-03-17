@@ -1,0 +1,55 @@
+---
+env:
+  BINARY: src
+  VERSION: ${RELEASE_VERSION}-${ARTISAN_REF} (enterprise)
+
+labels:
+  author: SouthWinds Tech Ltd
+  application: Source Configuration Service
+  description: Application configuration service
+  architecture: amd64
+
+  app:entrypoint: src
+  app:var@HTTP_USER: required
+  app:var@HTTP_PASSWORD: required
+  app:var@HTTP_PORT: optional,default=8080
+  app:volume@SOURCE_DATA_PATH: 0
+
+functions:
+  - name: package-linux
+    description: build the app package for doorman
+    run:
+      - art build -t app/source:${RELEASE_VERSION} --open-policy ".*" --run-policy ""
+
+  - name: build-linux
+    description: builds the doorman proxy binary for linux
+    env:
+      GOOS: linux
+      GOARCH: amd64
+    run:
+      - garble -literals -tiny build -ldflags="-w -s -X 'southwinds.dev/source/service.Version=${VERSION}'" -o bin/${GOOS}/${GOARCH}/${BINARY} ../
+
+  - name: build-darwin
+    description: builds the doorman proxy binary for darwin
+    env:
+      GOOS: darwin
+      GOARCH: amd64
+    run:
+      - garble -literals -tiny build -ldflags="-w -s -X 'southwinds.dev/source/service.Version=${VERSION}'" -o bin/${GOOS}/${GOARCH}/${BINARY} ../
+
+profiles:
+  - name: linux
+    description: build the doorman proxy application package for linux
+    default: true
+    type: content/app
+    target: bin/linux/amd64
+    run:
+      - $(build-linux)
+
+  - name: darwin
+    description: build the doorman proxy application package for darwin
+    type: content/app
+    target: bin/darwin/amd64
+    run:
+      - $(build-darwin)
+...
