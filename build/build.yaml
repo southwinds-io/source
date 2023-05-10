@@ -1,55 +1,29 @@
 ---
+# NOTE: this script requires stting up the RELEASE variable either with -i option or in a parent build file
 env:
-  BINARY: src
-  VERSION: ${RELEASE_VERSION}-${ARTISAN_REF} (enterprise)
-
-labels:
-  author: SouthWinds Tech Ltd
-  application: Source Configuration Service
-  description: Application configuration service
-  architecture: amd64
-
-  app:entrypoint: src
-  app:var@HTTP_USER: required
-  app:var@HTTP_PASSWORD: required
-  app:var@HTTP_PORT: optional,default=8080
-  app:volume@SOURCE_DATA_PATH: 0
-
+  REPO_NAME: ctr.southwinds.cloud
+  APP_NAME: source
+  VERSION: ${RELEASE}-${ARTISAN_REF}
 functions:
-  - name: package-linux
-    description: build the app package for doorman
+  - name: build
     run:
-      - art build -t app/source:${RELEASE_VERSION} --open-policy ".*" --run-policy ""
+      - $(build-bin-amr64)
+      - $(build-bin-amd64)
+      - docker buildx build --load --platform linux/arm64 -t ${REPO_NAME}/play/${APP_NAME}:${RELEASE}-arm64 --build-arg VERSION=${VERSION} .
+      - docker buildx build --load --platform linux/amd64 -t ${REPO_NAME}/play/${APP_NAME}:${RELEASE}-amd64 --build-arg VERSION=${VERSION} .
+      - rm -rf ./linux
 
-  - name: build-linux
-    description: builds the doorman proxy binary for linux
+  - name: build-bin-amr64
+    env:
+      GOOS: linux
+      GOARCH: arm64
+    run:
+      - go build -ldflags="-w -s -X 'southwinds.dev/source/service.Version=${VERSION}'" -o ${GOOS}/${GOARCH}/${APP_NAME} ../
+
+  - name: build-bin-amd64
     env:
       GOOS: linux
       GOARCH: amd64
     run:
-      - garble -literals -tiny build -ldflags="-w -s -X 'southwinds.dev/source/service.Version=${VERSION}'" -o bin/${GOOS}/${GOARCH}/${BINARY} ../
-
-  - name: build-darwin
-    description: builds the doorman proxy binary for darwin
-    env:
-      GOOS: darwin
-      GOARCH: amd64
-    run:
-      - garble -literals -tiny build -ldflags="-w -s -X 'southwinds.dev/source/service.Version=${VERSION}'" -o bin/${GOOS}/${GOARCH}/${BINARY} ../
-
-profiles:
-  - name: linux
-    description: build the doorman proxy application package for linux
-    default: true
-    type: content/app
-    target: bin/linux/amd64
-    run:
-      - $(build-linux)
-
-  - name: darwin
-    description: build the doorman proxy application package for darwin
-    type: content/app
-    target: bin/darwin/amd64
-    run:
-      - $(build-darwin)
+      - go build -ldflags="-w -s -X 'southwinds.dev/source/service.Version=${VERSION}'" -o ${GOOS}/${GOARCH}/${APP_NAME} ../
 ...
