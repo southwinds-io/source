@@ -1,5 +1,5 @@
 ---
-# NOTE: this script requires stting up the RELEASE variable either with -i option or in a parent build file
+# NOTE: this script requires setting up the RELEASE variable either with -i option or in a parent build file
 env:
   REPO_NAME: ctr.southwinds.cloud
   APP_NAME: source
