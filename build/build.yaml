@@ -1,7 +1,7 @@
 ---
 # NOTE: this script requires setting up the RELEASE variable either with -i option or in a parent build file
 env:
-  REPO_NAME: ctr.southwinds.cloud
+  REPO_NAME: registry.southwinds.io
   APP_NAME: source
   VERSION: ${RELEASE}-${ARTISAN_REF}
 functions:
@@ -18,12 +18,12 @@ functions:
       GOOS: linux
       GOARCH: arm64
     run:
-      - go build -ldflags="-w -s -X 'southwinds.dev/source/service.Version=${VERSION}'" -o ${GOOS}/${GOARCH}/${APP_NAME} ../
+      - go build -trimpath -ldflags="-w -s -X 'southwinds.dev/source/service.Version=${VERSION}'" -o ${GOOS}/${GOARCH}/${APP_NAME} ../
 
   - name: build-bin-amd64
     env:
       GOOS: linux
       GOARCH: amd64
     run:
-      - go build -ldflags="-w -s -X 'southwinds.dev/source/service.Version=${VERSION}'" -o ${GOOS}/${GOARCH}/${APP_NAME} ../
+      - go build -trimpath -ldflags="-w -s -X 'southwinds.dev/source/service.Version=${VERSION}'" -o ${GOOS}/${GOARCH}/${APP_NAME} ../
 ...
