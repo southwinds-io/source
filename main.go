@@ -38,7 +38,7 @@ func main() {
 		router.HandleFunc("/type", service.SetTypeHandler).Methods(http.MethodPut)
 		router.HandleFunc("/type/{key}", service.GetTypeHandler).Methods(http.MethodGet)
 		router.HandleFunc("/type", service.GetTypesHandler).Methods(http.MethodGet)
-		router.HandleFunc("/type", service.DeleteTypeHandler).Methods(http.MethodDelete)
+		router.HandleFunc("/type/{key}", service.DeleteTypeHandler).Methods(http.MethodDelete)
 		// configurations
 		router.HandleFunc("/item/{key}", service.SetItemHandler).Methods(http.MethodPut)
 		router.HandleFunc("/item/{key}", service.GetItemHandler).Methods(http.MethodGet)
