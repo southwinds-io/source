@@ -13,6 +13,11 @@ functions:
       - docker buildx build --load --platform linux/amd64 -t ${REPO_NAME}/play/${APP_NAME}:${RELEASE}-amd64 --build-arg VERSION=${VERSION} .
       - rm -rf ./linux
 
+  - name: push
+    run:
+      - docker push ${REPO_NAME}/play/${APP_NAME}:${RELEASE}-amd64
+      - docker push ${REPO_NAME}/play/${APP_NAME}:${RELEASE}-arm64
+
   - name: build-bin-amr64
     env:
       GOOS: linux
@@ -26,4 +31,8 @@ functions:
       GOARCH: amd64
     run:
       - go build -trimpath -ldflags="-w -s -X 'southwinds.dev/source/service.Version=${VERSION}'" -o ${GOOS}/${GOARCH}/${APP_NAME} ../
+
+  - name: debug
+    run:
+      - docker run -d --name src-dbg -p 8080:8080 -e HTTP_USER=admin -e HTTP_PASSWORD=admin ${REPO_NAME}/play/${APP_NAME}:${RELEASE}-arm64 sh -c 'tail -f /dev/null'
 ...
