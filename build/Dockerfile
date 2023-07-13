@@ -15,6 +15,8 @@ LABEL io.southwinds.LICENSE="Enterprise Lisence Agreement"
 RUN addgroup --system $UNAME --gid $GID && \
     adduser --system $UNAME --uid $UID --ingroup $UNAME && \
     apk update && \
+    apk del wget && \
+    apk --no-cache add curl && \
     apk add ca-certificates && \
     update-ca-certificates && \
     rm -rf /var/cache/apk/* && \
